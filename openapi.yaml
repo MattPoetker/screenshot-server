@@ -1,0 +1,434 @@
+openapi: 3.0.3
+info:
+  title: Screenshot API
+  description: |
+    This API provides powerful screenshot generation capabilities with extensive customization options for viewport dimensions, output formats, device simulation, and content modification.
+    
+    ## Authentication
+    All requests require a Bearer token in the Authorization header:
+    ```
+    Authorization: Bearer YOUR_TOKEN_HERE
+    ```
+  version: 1.0.0
+  contact:
+    name: Screenshot API Support
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://your-production-domain.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health Check
+      description: Returns server health status and operational information
+      security: []
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Healthy server
+                  value:
+                    status: "up"
+                    uptime: "3600s"
+                    timestamp: "2024-01-01T12:00:00.000Z"
+                    storage: "accessible"
+                    browser: "operational"
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                unhealthy:
+                  summary: Unhealthy server
+                  value:
+                    status: "critical"
+                    uptime: "3600s"
+                    timestamp: "2024-01-01T12:00:00.000Z"
+                    storage: "accessible"
+                    browser: "failed"
+                    error: "Browser launch failed"
+
+  /screenshot:
+    post:
+      tags:
+        - Screenshot
+      summary: Capture Screenshot
+      description: |
+        Captures a screenshot of the specified URL with customizable options including:
+        - Custom viewport dimensions
+        - Multiple output formats (PNG, JPEG, WebP)
+        - Device presets for mobile/tablet/desktop simulation
+        - Content modification (hide elements, block resources)
+        - Advanced timing and loading controls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreenshotRequest'
+            examples:
+              basic:
+                summary: Basic screenshot
+                value:
+                  url: "https://example.com"
+              custom_dimensions:
+                summary: Custom dimensions and format
+                value:
+                  url: "https://example.com"
+                  width: 1920
+                  height: 1080
+                  format: "jpeg"
+                  quality: 80
+              mobile_preset:
+                summary: Mobile device preset
+                value:
+                  url: "https://example.com"
+                  devicePreset: "mobile"
+                  fullPage: true
+                  waitFor: "networkidle0"
+              advanced:
+                summary: Advanced configuration
+                value:
+                  url: "https://example.com"
+                  width: 1440
+                  height: 900
+                  format: "webp"
+                  quality: 85
+                  fullPage: true
+                  waitFor: "networkidle2"
+                  delay: 2000
+                  hideElements: [".cookie-banner", "#popup"]
+                  blockResources: ["image", "font"]
+                  userAgent: "CustomBot/1.0"
+                  headers:
+                    X-Custom-Header: "value"
+      responses:
+        '200':
+          description: Screenshot captured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScreenshotResponse'
+              examples:
+                success:
+                  summary: Successful screenshot
+                  value:
+                    image: "thumbnail-1640995200000.png"
+                    url: "https://images.sitelaunch.io/images/thumbnail-1640995200000.png"
+                    metadata:
+                      width: 1366
+                      height: 768
+                      format: "png"
+                      size: 245760
+                      captureTime: "2024-01-01T12:00:00.000Z"
+                      processingTime: 2500
+        '400':
+          description: Bad request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_url:
+                  summary: Missing URL parameter
+                  value:
+                    error: "Failed to capture the screenshot"
+                    details: "URL is required"
+                invalid_format:
+                  summary: Invalid format
+                  value:
+                    error: "Failed to capture the screenshot"
+                    details: "Format must be png, jpeg, or webp"
+        '401':
+          description: Unauthorized - Missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                navigation_timeout:
+                  summary: Navigation timeout
+                  value:
+                    error: "Failed to capture the screenshot"
+                    details: "Navigation timeout exceeded"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+
+  schemas:
+    ScreenshotRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: The URL to capture
+          example: "https://example.com"
+        width:
+          type: integer
+          minimum: 1
+          maximum: 4000
+          default: 1366
+          description: Browser viewport width in pixels
+          example: 1920
+        height:
+          type: integer
+          minimum: 1
+          maximum: 4000
+          default: 768
+          description: Browser viewport height in pixels
+          example: 1080
+        devicePixelRatio:
+          type: number
+          minimum: 0.1
+          maximum: 5
+          default: 1
+          description: Device pixel ratio for high-DPI screenshots
+          example: 2
+        format:
+          type: string
+          enum: [png, jpeg, webp]
+          default: png
+          description: Output image format
+          example: "jpeg"
+        quality:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 90
+          description: JPEG/WebP compression quality (0-100)
+          example: 85
+        omitBackground:
+          type: boolean
+          default: false
+          description: Transparent background for PNG format
+          example: true
+        fullPage:
+          type: boolean
+          default: false
+          description: Capture entire page height vs viewport only
+          example: true
+        element:
+          type: string
+          description: CSS selector to capture specific element only
+          example: ".main-content"
+        clip:
+          type: object
+          description: Custom clipping rectangle
+          properties:
+            x:
+              type: number
+              description: X coordinate
+            y:
+              type: number
+              description: Y coordinate
+            width:
+              type: number
+              description: Width of clipping area
+            height:
+              type: number
+              description: Height of clipping area
+          example:
+            x: 100
+            y: 200
+            width: 800
+            height: 600
+        devicePreset:
+          type: string
+          enum: [mobile, tablet, desktop, iphone, ipad]
+          description: Quick device presets with predefined dimensions and user agents
+          example: "mobile"
+        userAgent:
+          type: string
+          description: Custom user agent string
+          example: "CustomBot/1.0"
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom HTTP headers as key-value pairs
+          example:
+            X-Custom-Header: "value"
+            Accept-Language: "en-US"
+        waitFor:
+          type: string
+          default: "load"
+          description: Wait condition - 'load', 'networkidle0', 'networkidle2', or CSS selector
+          example: "networkidle0"
+        delay:
+          type: integer
+          minimum: 0
+          maximum: 30000
+          default: 0
+          description: Additional delay in ms before taking screenshot
+          example: 2000
+        timeout:
+          type: integer
+          minimum: 1000
+          maximum: 60000
+          default: 30000
+          description: Page load timeout in milliseconds
+          example: 45000
+        hideElements:
+          type: array
+          items:
+            type: string
+          description: Array of CSS selectors to hide before screenshot
+          example: [".cookie-banner", "#ads", ".popup"]
+        blockResources:
+          type: array
+          items:
+            type: string
+            enum: [image, stylesheet, font, script, xhr, fetch, document, media, other]
+          description: Block resource types to improve performance
+          example: ["image", "font"]
+        cookies:
+          type: array
+          description: Array of cookie objects to set before navigation
+          items:
+            type: object
+            required:
+              - name
+              - value
+            properties:
+              name:
+                type: string
+                description: Cookie name
+              value:
+                type: string
+                description: Cookie value
+              domain:
+                type: string
+                description: Cookie domain
+              path:
+                type: string
+                description: Cookie path
+          example:
+            - name: "session_id"
+              value: "abc123"
+              domain: "example.com"
+              path: "/"
+
+    ScreenshotResponse:
+      type: object
+      properties:
+        image:
+          type: string
+          description: Generated image filename
+          example: "thumbnail-1640995200000.png"
+        url:
+          type: string
+          format: uri
+          description: Full URL to access the generated image
+          example: "https://images.sitelaunch.io/images/thumbnail-1640995200000.png"
+        metadata:
+          type: object
+          description: Screenshot metadata and processing information
+          properties:
+            width:
+              type: integer
+              description: Screenshot width in pixels
+              example: 1366
+            height:
+              type: integer
+              description: Screenshot height in pixels
+              example: 768
+            format:
+              type: string
+              description: Image format used
+              example: "png"
+            size:
+              type: integer
+              description: File size in bytes
+              example: 245760
+            captureTime:
+              type: string
+              format: date-time
+              description: Timestamp when screenshot was captured
+              example: "2024-01-01T12:00:00.000Z"
+            processingTime:
+              type: integer
+              description: Total processing time in milliseconds
+              example: 2500
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [up, warning, critical, down]
+          description: Overall server status
+          example: "up"
+        uptime:
+          type: string
+          description: Server uptime in human-readable format
+          example: "3600s"
+        timestamp:
+          type: string
+          format: date-time
+          description: Current server timestamp
+          example: "2024-01-01T12:00:00.000Z"
+        storage:
+          type: string
+          enum: [accessible, inaccessible]
+          description: Screenshot storage accessibility status
+          example: "accessible"
+        browser:
+          type: string
+          enum: [operational, failed]
+          description: Browser engine status
+          example: "operational"
+        error:
+          type: string
+          description: Error message if status is not 'up'
+          example: "Browser launch failed"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: General error message
+          example: "Failed to capture the screenshot"
+        details:
+          type: string
+          description: Detailed error information
+          example: "Navigation timeout exceeded"
+
+tags:
+  - name: Health
+    description: Server health and status monitoring
+  - name: Screenshot
+    description: Screenshot capture operations
