@@ -402,6 +402,20 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Initialize database
+const dbManager = require('./database/db-manager');
+
+// Admin interface routes
+const adminRoutes = require('./routes/admin');
+const authRoutes = require('./routes/auth');
+
+// Serve static files for admin interface
+app.use(express.static('public'));
+
+// API routes
+app.use('/auth', authRoutes);
+app.use('/admin', adminRoutes);
+
 // Enhanced health check endpoint
 app.get('/health', async (req, res) => {
   try {
@@ -662,7 +676,12 @@ async function waitForImages(page, timeout = 5000) {
   }
 }
 
-app.post('/screenshot', verifyToken, async (req, res) => {
+// Import auth middleware
+const { authenticateAPIKey, checkRateLimit } = require('./middleware/auth');
+const Screenshot = require('./models/Screenshot');
+
+
+app.post('/screenshot', authenticateAPIKey, checkRateLimit, async (req, res) => {
   let browserWrapper;
   let page;
   const startTime = Date.now();
@@ -686,6 +705,24 @@ app.post('/screenshot', verifyToken, async (req, res) => {
       
       fs.writeFileSync(imagePath, screenshot);
       const stats = fs.statSync(imagePath);
+      
+      // Log isolation screenshot to database
+      try {
+        await Screenshot.create({
+          api_key_id: req.apiKey.id,
+          url: config.url,
+          format: config.format,
+          width: config.width,
+          height: config.height,
+          file_path: imagePath,
+          file_size: stats.size,
+          success: true,
+          processing_time: Date.now() - startTime,
+          capture_type: config.captureType || 'screenshot'
+        });
+      } catch (logError) {
+        console.warn(`[${requestId}] Failed to log isolation screenshot:`, logError.message);
+      }
       
       return res.status(200).json({
         image: imageName,
@@ -839,6 +876,24 @@ app.post('/screenshot', verifyToken, async (req, res) => {
       
       console.log(`[${requestId}] ${actualFormat.toUpperCase()} saved: ${imageName}`);
       
+      // Log GIF to database
+      try {
+        await Screenshot.create({
+          api_key_id: req.apiKey.id,
+          url: config.url,
+          format: actualFormat,
+          width: config.width,
+          height: config.height,
+          file_path: imagePath,
+          file_size: gifResult.buffer.length,
+          success: true,
+          processing_time: Date.now() - startTime,
+          capture_type: 'scrolling-gif'
+        });
+      } catch (logError) {
+        console.warn(`[${requestId}] Failed to log GIF:`, logError.message);
+      }
+      
       // Respond with success
       return res.status(200).json({
         image: imageName,
@@ -919,6 +974,24 @@ app.post('/screenshot', verifyToken, async (req, res) => {
     
     console.log(`[${requestId}] Screenshot saved: ${imageName}`);
     
+    // Log screenshot to database
+    try {
+      await Screenshot.create({
+        api_key_id: req.apiKey.id,
+        url: config.url,
+        format: config.format,
+        width: config.width,
+        height: config.height,
+        file_path: imagePath,
+        file_size: stats.size,
+        success: true,
+        processing_time: Date.now() - startTime,
+        capture_type: config.captureType || 'screenshot'
+      });
+    } catch (logError) {
+      console.warn(`[${requestId}] Failed to log screenshot:`, logError.message);
+    }
+    
     // Respond with success
     res.status(200).json({
       image: imageName,
@@ -941,6 +1014,28 @@ app.post('/screenshot', verifyToken, async (req, res) => {
     // Mark browser as unhealthy if we have one
     if (browserWrapper) {
       browserWrapper.isHealthy = false;
+    }
+    
+    // Log failed screenshot to database
+    if (req.apiKey) {
+      try {
+        const config = validateAndApplyDefaults(req.body || {});
+        await Screenshot.create({
+          api_key_id: req.apiKey.id,
+          url: config.url || req.body.url || 'unknown',
+          format: config.format || 'png',
+          width: config.width || 1366,
+          height: config.height || 768,
+          file_path: null,
+          file_size: 0,
+          success: false,
+          processing_time: Date.now() - startTime,
+          capture_type: config.captureType || 'screenshot',
+          error_message: error.message
+        });
+      } catch (logError) {
+        console.warn(`[${requestId}] Failed to log error:`, logError.message);
+      }
     }
     
     res.status(500).json({ 
@@ -1025,6 +1120,12 @@ function startMonitoring() {
 (async () => {
     try {
         console.log('Initializing screenshot server...');
+        
+        // Initialize database first
+        console.log('Setting up database...');
+        await dbManager.connect();
+        await dbManager.runMigrations();
+        console.log('Database initialized successfully');
         
         // Initialize browser pool
         await initializeBrowserPool();
