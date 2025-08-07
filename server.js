@@ -6,6 +6,7 @@ const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const { spawn } = require('child_process');
+const GifGenerationService = require('./gif-service');
 const app = express();
 const port = 3000;
 
@@ -522,11 +523,25 @@ function validateAndApplyDefaults(params) {
     omitBackground: false,
     waitFor: 'load',
     delay: 0,
+    preWaitDelay: 0,
+    postNavigationDelay: 1000,
+    waitForImages: true,
+    imageTimeout: 5000,
     timeout: 30000,
     hideElements: [],
     blockResources: [],
     cookies: [],
-    headers: {}
+    headers: {},
+    // GIF-specific parameters
+    captureType: 'screenshot',
+    scrollSpeed: 200,
+    frameDuration: 100,
+    maxScrollHeight: 5000,
+    scrollPause: 500,
+    gifFrameRate: 10,
+    highlightInteractions: false,
+    scrollStep: 100,
+    repeat: 0
   };
 
   // Apply device preset if specified
@@ -543,8 +558,16 @@ function validateAndApplyDefaults(params) {
     throw new Error('URL is required');
   }
   
-  if (!['png', 'jpeg', 'webp'].includes(config.format)) {
-    throw new Error('Format must be png, jpeg, or webp');
+  if (!['screenshot', 'scrolling-gif'].includes(config.captureType)) {
+    throw new Error('captureType must be "screenshot" or "scrolling-gif"');
+  }
+  
+  if (config.captureType === 'scrolling-gif' && !['gif'].includes(config.format)) {
+    config.format = 'gif'; // Force GIF format for scrolling captures
+  }
+  
+  if (config.captureType === 'screenshot' && !['png', 'jpeg', 'webp'].includes(config.format)) {
+    throw new Error('Format must be png, jpeg, or webp for screenshots');
   }
   
   if (config.quality < 0 || config.quality > 100) {
@@ -559,7 +582,84 @@ function validateAndApplyDefaults(params) {
     throw new Error('Height must be between 1 and 4000 pixels');
   }
 
+  // Wait parameter validation
+  if (config.delay < 0 || config.delay > 60000) {
+    throw new Error('delay must be between 0 and 60000 milliseconds');
+  }
+  
+  if (config.preWaitDelay < 0 || config.preWaitDelay > 60000) {
+    throw new Error('preWaitDelay must be between 0 and 60000 milliseconds');
+  }
+  
+  if (config.postNavigationDelay < 0 || config.postNavigationDelay > 60000) {
+    throw new Error('postNavigationDelay must be between 0 and 60000 milliseconds');
+  }
+  
+  if (config.imageTimeout < 1000 || config.imageTimeout > 60000) {
+    throw new Error('imageTimeout must be between 1000 and 60000 milliseconds');
+  }
+
+  // GIF-specific validation
+  if (config.captureType === 'scrolling-gif') {
+    if (config.scrollSpeed < 50 || config.scrollSpeed > 2000) {
+      throw new Error('scrollSpeed must be between 50 and 2000 pixels per second');
+    }
+    
+    if (config.frameDuration < 50 || config.frameDuration > 2000) {
+      throw new Error('frameDuration must be between 50 and 2000 milliseconds');
+    }
+    
+    if (config.maxScrollHeight < 100 || config.maxScrollHeight > 20000) {
+      throw new Error('maxScrollHeight must be between 100 and 20000 pixels');
+    }
+    
+    if (config.gifFrameRate < 1 || config.gifFrameRate > 30) {
+      throw new Error('gifFrameRate must be between 1 and 30 FPS');
+    }
+  }
+
   return config;
+}
+
+// Wait for images to load
+async function waitForImages(page, timeout = 5000) {
+  try {
+    await page.evaluate((timeout) => {
+      return new Promise((resolve) => {
+        const images = Array.from(document.images);
+        let loadedCount = 0;
+        let totalImages = images.length;
+        
+        if (totalImages === 0) {
+          resolve();
+          return;
+        }
+        
+        const timeoutId = setTimeout(() => {
+          resolve(); // Resolve even if not all images loaded
+        }, timeout);
+        
+        const checkComplete = () => {
+          loadedCount++;
+          if (loadedCount >= totalImages) {
+            clearTimeout(timeoutId);
+            resolve();
+          }
+        };
+        
+        images.forEach((img) => {
+          if (img.complete && img.naturalHeight !== 0) {
+            checkComplete();
+          } else {
+            img.addEventListener('load', checkComplete);
+            img.addEventListener('error', checkComplete); // Count errors as "loaded"
+          }
+        });
+      });
+    }, timeout);
+  } catch (error) {
+    console.warn('Error waiting for images:', error.message);
+  }
 }
 
 app.post('/screenshot', verifyToken, async (req, res) => {
@@ -666,6 +766,12 @@ app.post('/screenshot', verifyToken, async (req, res) => {
       deviceScaleFactor: config.devicePixelRatio
     });
     
+    // Pre-navigation delay (if needed for page setup)
+    if (config.preWaitDelay > 0) {
+      console.log(`[${requestId}] Pre-navigation delay: ${config.preWaitDelay}ms`);
+      await new Promise(resolve => setTimeout(resolve, config.preWaitDelay));
+    }
+    
     // Navigate to URL with timeout
     const waitForCondition = ['load', 'networkidle0', 'networkidle2'].includes(config.waitFor) 
       ? config.waitFor 
@@ -676,9 +782,21 @@ app.post('/screenshot', verifyToken, async (req, res) => {
       timeout: config.timeout 
     });
     
+    // Post-navigation delay (allows initial page resources to load)
+    if (config.postNavigationDelay > 0) {
+      console.log(`[${requestId}] Waiting ${config.postNavigationDelay}ms after navigation`);
+      await new Promise(resolve => setTimeout(resolve, config.postNavigationDelay));
+    }
+    
     // Wait for specific element if selector provided and not a standard wait condition
     if (config.waitFor && !['load', 'networkidle0', 'networkidle2'].includes(config.waitFor)) {
       await page.waitForSelector(config.waitFor, { timeout: config.timeout });
+    }
+    
+    // Wait for images to load if requested
+    if (config.waitForImages) {
+      console.log(`[${requestId}] Waiting for images to load (timeout: ${config.imageTimeout}ms)`);
+      await waitForImages(page, config.imageTimeout);
     }
     
     // Hide elements if specified
@@ -693,7 +811,53 @@ app.post('/screenshot', verifyToken, async (req, res) => {
     
     // Additional delay if specified
     if (config.delay > 0) {
-      await page.waitForTimeout(config.delay);
+      await new Promise(resolve => setTimeout(resolve, config.delay));
+    }
+    
+    // Handle GIF generation if requested
+    if (config.captureType === 'scrolling-gif') {
+      console.log(`[${requestId}] Starting GIF generation`);
+      
+      const gifService = new GifGenerationService();
+      const gifResult = await gifService.generateScrollingGif(page, config);
+      
+      clearTimeout(pageTimeout);
+      console.log(`[${requestId}] GIF generated successfully`);
+      
+      // Close page before returning browser to pool
+      await browserWrapper.closePage(page);
+      page = null;
+      
+      // Generate filename based on actual output format
+      const timestamp = Date.now();
+      const actualFormat = gifResult.buffer.length > 0 && gifResult.buffer[0] === 0x47 && gifResult.buffer[1] === 0x49 ? 'gif' : 'png';
+      const imageName = actualFormat === 'gif' ? `scrolling-${timestamp}.gif` : `scrolling-fallback-${timestamp}.png`;
+      const imagePath = path.join(IMAGES_DIR, imageName);
+      
+      // Save GIF/PNG
+      fs.writeFileSync(imagePath, gifResult.buffer);
+      
+      console.log(`[${requestId}] ${actualFormat.toUpperCase()} saved: ${imageName}`);
+      
+      // Respond with success
+      return res.status(200).json({
+        image: imageName,
+        url: `https://images.sitelaunch.io/images/${imageName}`,
+        metadata: {
+          width: config.width,
+          height: config.height,
+          format: actualFormat,
+          size: gifResult.buffer.length,
+          captureTime: new Date().toISOString(),
+          processingTime: Date.now() - startTime,
+          method: 'pooled',
+          browserPid: browserWrapper.pid,
+          frameCount: gifResult.metadata.frameCount,
+          duration: gifResult.metadata.duration,
+          scrollDistance: gifResult.metadata.scrollDistance,
+          note: actualFormat === 'png' ? 'Returned first frame as PNG (install GraphicsMagick for full GIF support)' : 'Animated GIF created successfully'
+        }
+      });
     }
     
     // Prepare screenshot options

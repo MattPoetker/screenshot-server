@@ -116,6 +116,30 @@ paths:
                   userAgent: "CustomBot/1.0"
                   headers:
                     X-Custom-Header: "value"
+              scrolling_gif:
+                summary: Scrolling GIF capture
+                value:
+                  url: "https://example.com"
+                  captureType: "scrolling-gif"
+                  width: 1200
+                  height: 800
+                  scrollSpeed: 250
+                  frameDuration: 120
+                  maxScrollHeight: 3000
+                  highlightInteractions: true
+                  gifFrameRate: 12
+                  scrollStep: 150
+              image_loading:
+                summary: Enhanced wait for images
+                value:
+                  url: "https://example.com"
+                  width: 1920
+                  height: 1080
+                  waitFor: "networkidle0"
+                  postNavigationDelay: 3000
+                  waitForImages: true
+                  imageTimeout: 10000
+                  delay: 1000
       responses:
         '200':
           description: Screenshot captured successfully
@@ -196,6 +220,12 @@ components:
           format: uri
           description: The URL to capture
           example: "https://example.com"
+        captureType:
+          type: string
+          enum: [screenshot, scrolling-gif]
+          default: screenshot
+          description: Type of capture - static screenshot or animated scrolling GIF
+          example: "screenshot"
         width:
           type: integer
           minimum: 1
@@ -219,9 +249,9 @@ components:
           example: 2
         format:
           type: string
-          enum: [png, jpeg, webp]
+          enum: [png, jpeg, webp, gif]
           default: png
-          description: Output image format
+          description: Output image format (gif is automatically set for scrolling-gif captureType)
           example: "jpeg"
         quality:
           type: integer
@@ -290,10 +320,36 @@ components:
         delay:
           type: integer
           minimum: 0
-          maximum: 30000
+          maximum: 60000
           default: 0
-          description: Additional delay in ms before taking screenshot
+          description: Additional delay in ms before taking screenshot (after all other waits)
           example: 2000
+        preWaitDelay:
+          type: integer
+          minimum: 0
+          maximum: 60000
+          default: 0
+          description: Delay in ms before page navigation (for page setup)
+          example: 500
+        postNavigationDelay:
+          type: integer
+          minimum: 0
+          maximum: 60000
+          default: 1000
+          description: Delay in ms after page navigation (allows resources to load)
+          example: 2000
+        waitForImages:
+          type: boolean
+          default: true
+          description: Wait for all images to load before taking screenshot
+          example: true
+        imageTimeout:
+          type: integer
+          minimum: 1000
+          maximum: 60000
+          default: 5000
+          description: Maximum time in ms to wait for images to load
+          example: 8000
         timeout:
           type: integer
           minimum: 1000
@@ -340,6 +396,60 @@ components:
               value: "abc123"
               domain: "example.com"
               path: "/"
+        scrollSpeed:
+          type: integer
+          minimum: 50
+          maximum: 2000
+          default: 200
+          description: Scroll speed in pixels per second (for scrolling-gif only)
+          example: 300
+        frameDuration:
+          type: integer
+          minimum: 50
+          maximum: 2000
+          default: 100
+          description: Duration between frames in milliseconds (for scrolling-gif only)
+          example: 150
+        maxScrollHeight:
+          type: integer
+          minimum: 100
+          maximum: 20000
+          default: 5000
+          description: Maximum scroll distance in pixels (for scrolling-gif only)
+          example: 3000
+        scrollPause:
+          type: integer
+          minimum: 0
+          maximum: 5000
+          default: 500
+          description: Pause duration at interesting sections in ms (for scrolling-gif only)
+          example: 1000
+        gifFrameRate:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 10
+          description: Output GIF frame rate in FPS (for scrolling-gif only)
+          example: 15
+        highlightInteractions:
+          type: boolean
+          default: false
+          description: Highlight interactive elements during scroll (for scrolling-gif only)
+          example: true
+        scrollStep:
+          type: integer
+          minimum: 50
+          maximum: 500
+          default: 100
+          description: Pixels to scroll per step (for scrolling-gif only)
+          example: 120
+        repeat:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 0
+          description: Number of times to repeat GIF (0 = infinite loop, for scrolling-gif only)
+          example: 3
 
     ScreenshotResponse:
       type: object
@@ -382,6 +492,18 @@ components:
               type: integer
               description: Total processing time in milliseconds
               example: 2500
+            frameCount:
+              type: integer
+              description: Number of frames in GIF (for scrolling-gif only)
+              example: 25
+            duration:
+              type: integer
+              description: Total GIF duration in milliseconds (for scrolling-gif only)
+              example: 2500
+            scrollDistance:
+              type: integer
+              description: Total scroll distance captured in pixels (for scrolling-gif only)
+              example: 2400
 
     HealthResponse:
       type: object
