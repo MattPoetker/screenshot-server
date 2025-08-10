@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screenshot API Dashboard</title>
+    <link href="css/tailwind.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50/30">
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <i data-lucide="camera" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900">Screenshot API</h1>
+                        <p class="text-sm text-slate-600">Admin Dashboard</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors">
+                        <i data-lucide="sun" class="w-4 h-4 text-slate-600"></i>
+                    </button>
+                    
+                    <!-- User Menu -->
+                    <div class="relative">
+                        <button id="user-menu-btn" class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                            <div class="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center">
+                                <i data-lucide="user" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <span class="text-sm font-medium text-slate-700" id="username">Admin</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                        </button>
+                        
+                        <div id="user-menu" class="hidden absolute right-0 top-12 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2">
+                            <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                <i data-lucide="settings" class="w-4 h-4"></i>
+                                Settings
+                            </a>
+                            <div class="h-px bg-slate-200 my-1"></div>
+                            <button id="logout-btn" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <div class="flex gap-6 mt-4 border-b border-slate-200">
+                <button class="nav-tab active" data-page="dashboard">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                    Dashboard
+                </button>
+                <button class="nav-tab" data-page="api-keys">
+                    <i data-lucide="key" class="w-4 h-4"></i>
+                    API Keys
+                </button>
+                <button class="nav-tab" data-page="screenshots">
+                    <i data-lucide="image" class="w-4 h-4"></i>
+                    Screenshots
+                </button>
+                <button class="nav-tab" data-page="analytics">
+                    <i data-lucide="trending-up" class="w-4 h-4"></i>
+                    Analytics
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto p-6">
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="page active">
+            <!-- Page Header -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-slate-900 mb-2">API Dashboard</h2>
+                    <p class="text-slate-600 font-medium">Monitor your screenshot API usage and performance</p>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button class="btn btn-outline">
+                        <i data-lucide="key" class="w-4 h-4"></i>
+                        Manage Keys
+                    </button>
+                    <button class="btn btn-primary">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                        View Analytics
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="stats-card" data-stat="requests">
+                    <div class="stats-card-icon bg-indigo-100 text-indigo-600">
+                        <i data-lucide="camera" class="w-6 h-6"></i>
+                    </div>
+                    <div class="stats-card-content">
+                        <h3 class="stats-card-title">Total Requests</h3>
+                        <div class="stats-card-value" id="total-requests">-</div>
+                        <div class="stats-card-trend positive">
+                            <i data-lucide="trending-up" class="w-3 h-3"></i>
+                            <span>+12.5%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-card" data-stat="keys">
+                    <div class="stats-card-icon bg-emerald-100 text-emerald-600">
+                        <i data-lucide="key" class="w-6 h-6"></i>
+                    </div>
+                    <div class="stats-card-content">
+                        <h3 class="stats-card-title">Active API Keys</h3>
+                        <div class="stats-card-value" id="active-keys">-</div>
+                    </div>
+                </div>
+
+                <div class="stats-card" data-stat="success">
+                    <div class="stats-card-icon bg-green-100 text-green-600">
+                        <i data-lucide="trending-up" class="w-6 h-6"></i>
+                    </div>
+                    <div class="stats-card-content">
+                        <h3 class="stats-card-title">Success Rate</h3>
+                        <div class="stats-card-value" id="success-rate">-</div>
+                        <div class="stats-card-trend positive">
+                            <i data-lucide="trending-up" class="w-3 h-3"></i>
+                            <span>+2.1%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-card" data-stat="time">
+                    <div class="stats-card-icon bg-purple-100 text-purple-600">
+                        <i data-lucide="clock" class="w-6 h-6"></i>
+                    </div>
+                    <div class="stats-card-content">
+                        <h3 class="stats-card-title">Avg Response Time</h3>
+                        <div class="stats-card-value" id="avg-time">-</div>
+                        <div class="stats-card-trend positive">
+                            <i data-lucide="trending-up" class="w-3 h-3"></i>
+                            <span>-15ms</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Left Column -->
+                <div class="lg:col-span-2 space-y-8">
+                    <!-- Usage Chart -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Usage Over Time</h3>
+                        </div>
+                        <div class="card-content">
+                            <canvas id="usage-chart" height="300"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Recent Activity</h3>
+                        </div>
+                        <div class="card-content">
+                            <div id="recent-activity" class="space-y-3">
+                                <!-- Activity items will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-8">
+                    <!-- Quick Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Quick Actions</h3>
+                        </div>
+                        <div class="card-content space-y-3">
+                            <button class="quick-action-btn" onclick="showCreateKeyModal()">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                Create API Key
+                            </button>
+                            <button class="quick-action-btn" onclick="showTestModal()">
+                                <i data-lucide="play" class="w-4 h-4"></i>
+                                Test API
+                            </button>
+                            <button class="quick-action-btn" onclick="downloadReport()">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                                Download Report
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- API Health -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i data-lucide="activity" class="w-5 h-5 text-emerald-500"></i>
+                                API Health
+                            </h3>
+                        </div>
+                        <div class="card-content space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-slate-600">Uptime</span>
+                                <span class="text-sm font-semibold text-emerald-600">99.9%</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-slate-600">Rate Limit</span>
+                                <span class="text-sm font-semibold text-slate-900">1000/hr</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-slate-600">Cache Hit Rate</span>
+                                <span class="text-sm font-semibold text-indigo-600">87%</span>
+                            </div>
+                            
+                            <div class="pt-2 border-t border-slate-100">
+                                <div class="flex items-center gap-2 text-sm text-emerald-600">
+                                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                                    All systems operational
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Keys Page -->
+        <div id="api-keys-page" class="page">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-slate-900 mb-2">API Keys</h2>
+                    <p class="text-slate-600">Manage your API keys and permissions</p>
+                </div>
+                <button class="btn btn-primary" onclick="showCreateKeyModal()">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    Create New Key
+                </button>
+            </div>
+
+            <div id="api-keys-grid" class="grid gap-6">
+                <!-- API key cards will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Screenshots Page -->
+        <div id="screenshots-page" class="page">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-slate-900 mb-2">Screenshots</h2>
+                    <p class="text-slate-600">Browse and manage your screenshots</p>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button class="btn btn-outline" onclick="showFilters()">
+                        <i data-lucide="filter" class="w-4 h-4"></i>
+                        Filters
+                    </button>
+                    <button class="btn btn-outline" onclick="toggleView()">
+                        <i data-lucide="grid" class="w-4 h-4"></i>
+                        Grid View
+                    </button>
+                </div>
+            </div>
+
+            <div id="screenshots-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Screenshot cards will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Analytics Page -->
+        <div id="analytics-page" class="page">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-slate-900 mb-2">Analytics</h2>
+                <p class="text-slate-600">Detailed usage analytics and insights</p>
+            </div>
+
+            <!-- Analytics content will be added here -->
+            <div class="grid lg:grid-cols-2 gap-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Usage Trends</h3>
+                    </div>
+                    <div class="card-content">
+                        <canvas id="trends-chart" height="300"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Format Distribution</h3>
+                    </div>
+                    <div class="card-content">
+                        <canvas id="format-chart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="modal-content" id="modal-content">
+                <!-- Modal content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <div class="loading-circle"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Login Modal (shown when not authenticated) -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal max-w-md">
+            <div class="modal-header">
+                <h3>Sign In</h3>
+            </div>
+            <div class="modal-content">
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Username</label>
+                        <input type="text" id="login-username" class="input" placeholder="Enter your username" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                        <input type="password" id="login-password" class="input" placeholder="Enter your password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">
+                        Sign In
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Created Modal -->
+    <div id="api-key-created-modal" class="modal-overlay" style="display: none;">
+        <div class="modal max-w-2xl">
+            <div class="modal-header">
+                <h3>🔑 API Key Created Successfully</h3>
+                <button class="modal-close" onclick="closeApiKeyModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-start space-x-3">
+                        <i data-lucide="alert-triangle" class="text-amber-600 mt-1 flex-shrink-0"></i>
+                        <div>
+                            <h4 class="font-semibold text-amber-800 mb-1">Important Security Notice</h4>
+                            <p class="text-sm text-amber-700">
+                                This is the <strong>only time</strong> you'll see your API key. Make sure to copy and store it securely.
+                                We cannot recover this key if you lose it.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">API Key Name</label>
+                        <input type="text" id="created-key-name" class="input" readonly>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Your API Key</label>
+                        <div class="relative">
+                            <input type="text" id="created-api-key" class="input font-mono text-sm pr-20" readonly>
+                            <button 
+                                onclick="copyApiKey()" 
+                                class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                                title="Copy to clipboard">
+                                <i data-lucide="copy" class="w-3 h-3"></i>
+                                Copy
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Click the copy button to copy this key to your clipboard</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Usage Example</label>
+                        <div class="bg-slate-900 text-slate-100 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                            <div class="text-slate-400 mb-2"># Using curl:</div>
+                            <div>curl -X POST http://localhost:3000/screenshot \</div>
+                            <div>&nbsp;&nbsp;-H "Authorization: Bearer <span id="example-key" class="text-green-400">your-api-key</span>" \</div>
+                            <div>&nbsp;&nbsp;-H "Content-Type: application/json" \</div>
+                            <div>&nbsp;&nbsp;-d '{"url": "https://example.com"}'</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-slate-200">
+                    <button onclick="downloadApiKeyInfo()" class="btn btn-secondary">
+                        <i data-lucide="download" class="w-4 h-4 mr-2"></i>
+                        Download Info
+                    </button>
+                    <button onclick="closeApiKeyModal()" class="btn btn-primary">
+                        <i data-lucide="check" class="w-4 h-4 mr-2"></i>
+                        I've Saved My Key
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create API Key Modal -->
+    <div id="create-key-modal" class="modal-overlay" style="display: none;">
+        <div class="modal max-w-md">
+            <div class="modal-header">
+                <h3>🔑 Create New API Key</h3>
+                <button class="modal-close" onclick="closeCreateKeyModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-content">
+                <form id="create-key-form" onsubmit="handleCreateApiKey(event)">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2" for="key-name">
+                                API Key Name <span class="text-red-500">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="key-name" 
+                                name="name"
+                                class="input" 
+                                placeholder="e.g., Production API, Development Key" 
+                                required
+                                maxlength="100">
+                            <p class="text-xs text-slate-600 mt-1">Choose a descriptive name to identify this key</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2" for="key-description">
+                                Description (Optional)
+                            </label>
+                            <textarea 
+                                id="key-description" 
+                                name="description"
+                                class="input" 
+                                rows="3"
+                                placeholder="Describe what this API key will be used for..."
+                                maxlength="500"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2" for="key-rate-limit">
+                                Rate Limit (requests per hour)
+                            </label>
+                            <select id="key-rate-limit" name="rate_limit" class="input">
+                                <option value="100">100 requests/hour (Free tier)</option>
+                                <option value="1000" selected>1,000 requests/hour (Standard)</option>
+                                <option value="5000">5,000 requests/hour (Pro)</option>
+                                <option value="10000">10,000 requests/hour (Enterprise)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                Expires On (Optional)
+                            </label>
+                            <input 
+                                type="date" 
+                                id="key-expires" 
+                                name="expires_at"
+                                class="input"
+                                min="">
+                            <p class="text-xs text-slate-600 mt-1">Leave blank for no expiration</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-slate-200">
+                        <button type="button" onclick="closeCreateKeyModal()" class="btn btn-secondary">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="key" class="w-4 h-4 mr-2"></i>
+                            Create API Key
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils/api.js"></script>
+    <script src="js/utils/router.js"></script>
+    <script src="js/utils/animations.js"></script>
+    <script src="js/components/StatsCard.js"></script>
+    <script src="js/components/RecentActivity.js"></script>
+    <script src="js/components/UsageChart.js"></script>
+    <script src="js/components/ApiKeyCard.js"></script>
+    <script src="js/pages/Dashboard.js"></script>
+    <script src="js/pages/ApiKeys.js"></script>
+    <script src="js/pages/Screenshots.js"></script>
+    <script src="js/pages/Analytics.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

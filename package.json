@@ -1,25 +1,48 @@
 {
-  "name": "screenshot-server",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "screenshot-app",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
+    "@stripe/react-stripe-js": "^3.9.0",
+    "@stripe/stripe-js": "^7.8.0",
     "bcryptjs": "^3.0.2",
-    "body-parser": "^1.20.3",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.5.0",
+    "dotenv": "^17.2.1",
     "gm": "^1.25.1",
+    "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
-    "puppeteer": "^24.1.0",
+    "lucide-react": "^0.539.0",
+    "next": "^14.0.0",
+    "puppeteer": "^24.16.0",
+    "react": "^18",
+    "react-dom": "^18",
     "sqlite3": "^5.1.7",
-    "swagger-ui-express": "^5.0.0",
-    "uuid": "^11.1.0",
-    "yamljs": "^0.3.0"
+    "stripe": "^18.4.0",
+    "swagger-ui-dist": "^5.27.1",
+    "swagger-ui-react": "^5.27.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/js-yaml": "^4.0.9",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/stripe": "^8.0.416",
+    "@types/swagger-ui-react": "^5.18.0",
+    "@types/uuid": "^10.0.0",
+    "@types/yamljs": "^0.2.34",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8",
+    "eslint-config-next": "^14.0.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5"
   }
 }

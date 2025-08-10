@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom component classes for the admin interface */
+@layer components {
+  .card {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  
+  .card-header {
+    @apply px-6 py-4 border-b border-slate-200/50;
+  }
+  
+  .card-title {
+    @apply text-lg font-semibold text-slate-800;
+  }
+  
+  .card-content {
+    @apply p-6;
+  }
+  
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white focus:ring-primary-500;
+  }
+  
+  .btn-secondary {
+    @apply bg-slate-200 hover:bg-slate-300 text-slate-700 focus:ring-slate-500;
+  }
+  
+  .input {
+    @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+  
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 invisible transition-all duration-300;
+  }
+  
+  .modal-overlay.show {
+    @apply opacity-100 visible;
+  }
+  
+  .modal {
+    @apply bg-white rounded-xl shadow-xl max-w-md w-full mx-4 transform scale-95 transition-transform duration-300;
+  }
+  
+  .modal-overlay.show .modal {
+    @apply scale-100;
+  }
+  
+  .modal-header {
+    @apply flex items-center justify-between p-6 border-b border-slate-200;
+  }
+  
+  .modal-content {
+    @apply p-6;
+  }
+  
+  .modal-close {
+    @apply text-slate-400 hover:text-slate-600 transition-colors;
+  }
+  
+  .stats-card {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  
+  .quick-action-btn {
+    @apply flex items-center space-x-2 w-full p-3 text-left rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors;
+  }
+  
+  .nav-item {
+    @apply flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white/50 transition-all;
+  }
+  
+  .nav-item.active {
+    @apply bg-white/80 text-primary-600 shadow-sm;
+  }
+  
+  .api-key-card {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  
+  .toast {
+    @apply fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300;
+  }
+  
+  .toast.show {
+    @apply translate-x-0;
+  }
+  
+  .toast-success {
+    @apply bg-green-500 text-white;
+  }
+  
+  .toast-error {
+    @apply bg-red-500 text-white;
+  }
+  
+  .toast-info {
+    @apply bg-blue-500 text-white;
+  }
+  
+  .toast-warning {
+    @apply bg-yellow-500 text-white;
+  }
+}
+
+/* Custom glassmorphism background */
+@layer base {
+  body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+  }
+}

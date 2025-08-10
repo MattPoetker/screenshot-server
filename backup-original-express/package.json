@@ -1,0 +1,33 @@
+{
+  "name": "screenshot-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build-css": "npx tailwindcss -i ./src/input.css -o ./public/css/tailwind.css --watch",
+    "build-css-prod": "npx tailwindcss -i ./src/input.css -o ./public/css/tailwind.css --minify",
+    "dev": "npm run build-css",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "body-parser": "^1.20.3",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "gm": "^1.25.1",
+    "jsonwebtoken": "^9.0.2",
+    "puppeteer": "^24.1.0",
+    "sqlite3": "^5.1.7",
+    "swagger-ui-express": "^5.0.0",
+    "uuid": "^11.1.0",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17"
+  }
+}
