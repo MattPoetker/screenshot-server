@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
+import universalDb from '@/lib/db/universal'
 import Screenshot from '@/lib/models/Screenshot'
-import { authenticateAdmin } from '@/lib/auth/middleware'
+import { authenticateJWT } from '@/lib/auth/middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,8 +13,8 @@ export async function DELETE(
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
@@ -24,6 +25,28 @@ export async function DELETE(
                 success: false,
                 error: 'Invalid screenshot ID' 
             }, { status: 400 })
+        }
+
+        // Verify screenshot belongs to user before deleting
+        const screenshot = await Screenshot.findById(screenshotId)
+        if (!screenshot) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'Screenshot not found' 
+            }, { status: 404 })
+        }
+
+        // Check if screenshot belongs to user's API key
+        const apiKeyCheck = await universalDb.get(
+            'SELECT id FROM api_keys WHERE id = ? AND user_id = ?',
+            [screenshot.api_key_id, authResult.user!.id]
+        )
+        
+        if (!apiKeyCheck) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'Screenshot not found' 
+            }, { status: 404 })
         }
 
         const deleted = await Screenshot.delete(screenshotId)
@@ -57,8 +80,8 @@ export async function GET(
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
@@ -74,6 +97,19 @@ export async function GET(
         const screenshot = await Screenshot.findById(screenshotId)
         
         if (!screenshot) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'Screenshot not found' 
+            }, { status: 404 })
+        }
+
+        // Check if screenshot belongs to user's API key
+        const apiKeyCheck = await universalDb.get(
+            'SELECT id FROM api_keys WHERE id = ? AND user_id = ?',
+            [screenshot.api_key_id, authResult.user!.id]
+        )
+        
+        if (!apiKeyCheck) {
             return NextResponse.json({ 
                 success: false,
                 error: 'Screenshot not found' 

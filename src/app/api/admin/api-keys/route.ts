@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
 import ApiKey from '@/lib/models/ApiKey'
-import { authenticateAdmin } from '@/lib/auth/middleware'
+import { authenticateJWT } from '@/lib/auth/middleware'
 
 export async function GET(request: NextRequest) {
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user (any authenticated user can manage their API keys)
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
 
-        const keys = await ApiKey.findAll()
+        // Get only the current user's API keys
+        const keys = await ApiKey.findByUser(authResult.user!.id)
         
         // Add usage stats for each key
         const keysWithStats = await Promise.all(keys.map(async (key) => {
@@ -41,8 +42,8 @@ export async function POST(request: NextRequest) {
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user (any authenticated user can manage their API keys)
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }

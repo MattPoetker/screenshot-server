@@ -111,15 +111,51 @@ export class DatabaseManager {
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
-                email TEXT,
+                email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'user')),
                 is_active INTEGER DEFAULT 1,
+                email_verified INTEGER DEFAULT 0,
+                email_verification_token TEXT,
+                email_verification_expires DATETIME,
+                password_reset_token TEXT,
+                password_reset_expires DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 last_login DATETIME
             )
         `)
+        
+        // Add email verification columns to existing users table if they don't exist
+        try {
+            await this.run(`ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
+        
+        try {
+            await this.run(`ALTER TABLE users ADD COLUMN email_verification_token TEXT`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
+        
+        try {
+            await this.run(`ALTER TABLE users ADD COLUMN email_verification_expires DATETIME`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
+        
+        try {
+            await this.run(`ALTER TABLE users ADD COLUMN password_reset_token TEXT`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
+        
+        try {
+            await this.run(`ALTER TABLE users ADD COLUMN password_reset_expires DATETIME`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
 
         // API Keys table
         await this.run(`
@@ -161,10 +197,39 @@ export class DatabaseManager {
                 user_agent TEXT,
                 ip_address TEXT,
                 metadata TEXT,
+                storage_provider TEXT DEFAULT 'local',
+                storage_url TEXT,
+                public_url TEXT,
+                cdn_url TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (api_key_id) REFERENCES api_keys (id)
             )
         `)
+
+        // Add storage-related columns to existing screenshots table if they don't exist
+        try {
+            await this.run(`ALTER TABLE screenshots ADD COLUMN storage_provider TEXT DEFAULT 'local'`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
+        
+        try {
+            await this.run(`ALTER TABLE screenshots ADD COLUMN storage_url TEXT`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
+        
+        try {
+            await this.run(`ALTER TABLE screenshots ADD COLUMN public_url TEXT`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
+        
+        try {
+            await this.run(`ALTER TABLE screenshots ADD COLUMN cdn_url TEXT`)
+        } catch (e) {
+            // Column already exists, ignore
+        }
 
         // Usage stats table
         await this.run(`

@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
-import dbManager from '../db'
+import universalDb from '../db/universal'
 import type { ApiKey as ApiKeyType, CreateApiKeyRequest, CreateApiKeyResponse } from '../../types'
 
 export class ApiKey implements ApiKeyType {
@@ -17,6 +17,12 @@ export class ApiKey implements ApiKeyType {
     updated_at!: string
 
     constructor(data: any) {
+        // Map PostgreSQL column names to our interface
+        if (data.user_id) data.created_by = data.user_id
+        if (data.key_name) data.name = data.key_name
+        if (data.api_key) data.key_id = data.api_key
+        if (data.rate_limit_per_hour) data.rate_limit = data.rate_limit_per_hour
+        
         Object.assign(this, data)
     }
 
@@ -25,16 +31,15 @@ export class ApiKey implements ApiKeyType {
         const rawKey = `sk_${crypto.randomBytes(32).toString('hex')}`
         const keyHash = await bcrypt.hash(rawKey, 12)
 
-        const result = await dbManager.run(`
-            INSERT INTO api_keys (key_id, name, description, key_hash, rate_limit, created_by, expires_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+        const result = await universalDb.run(`
+            INSERT INTO api_keys (user_id, key_name, api_key, key_hash, rate_limit_per_hour, expires_at) 
+            VALUES (?, ?, ?, ?, ?, ?)
         `, [
-            keyId,
+            keyData.created_by,
             keyData.name,
-            keyData.description || null,
+            keyId, // Store keyId as api_key for now
             keyHash,
             keyData.rate_limit || 1000,
-            keyData.created_by,
             keyData.expires_at || null
         ])
 
@@ -49,40 +54,43 @@ export class ApiKey implements ApiKeyType {
     }
 
     static async findById(id: number): Promise<ApiKey | null> {
-        const row = await dbManager.get('SELECT * FROM api_keys WHERE id = ?', [id])
+        const row = await universalDb.get('SELECT * FROM api_keys WHERE id = ?', [id])
         return row ? new ApiKey(row) : null
     }
 
     static async findByKeyId(keyId: string): Promise<ApiKey | null> {
-        const row = await dbManager.get('SELECT * FROM api_keys WHERE key_id = ?', [keyId])
+        const row = await universalDb.get('SELECT * FROM api_keys WHERE api_key = ?', [keyId])
         return row ? new ApiKey(row) : null
     }
 
     static async findAll(limit = 100, offset = 0): Promise<ApiKey[]> {
-        const rows = await dbManager.all(`
+        const isActive = universalDb.queryBuilder.convertBoolean(true)
+        const rows = await universalDb.all(`
             SELECT ak.*, u.username as created_by_username 
             FROM api_keys ak
-            LEFT JOIN users u ON ak.created_by = u.id
-            WHERE ak.is_active = 1 
+            LEFT JOIN users u ON ak.user_id = u.id
+            WHERE ak.is_active = ? 
             ORDER BY ak.created_at DESC 
             LIMIT ? OFFSET ?
-        `, [limit, offset])
+        `, [isActive, limit, offset])
         
         return rows.map(row => new ApiKey(row))
     }
 
     static async findByUser(userId: number): Promise<ApiKey[]> {
-        const rows = await dbManager.all(`
+        const isActive = universalDb.queryBuilder.convertBoolean(true)
+        const rows = await universalDb.all(`
             SELECT * FROM api_keys 
-            WHERE created_by = ? AND is_active = 1 
+            WHERE user_id = ? AND is_active = ? 
             ORDER BY created_at DESC
-        `, [userId])
+        `, [userId, isActive])
         
         return rows.map(row => new ApiKey(row))
     }
 
     static async validateKey(rawKey: string): Promise<ApiKey | null> {
-        const allKeys = await dbManager.all('SELECT * FROM api_keys WHERE is_active = 1')
+        const isActive = universalDb.queryBuilder.convertBoolean(true)
+        const allKeys = await universalDb.all('SELECT * FROM api_keys WHERE is_active = ?', [isActive])
         
         for (const keyData of allKeys) {
             const isValid = await bcrypt.compare(rawKey, keyData.key_hash)
@@ -98,11 +106,12 @@ export class ApiKey implements ApiKeyType {
     }
 
     static async delete(id: number): Promise<boolean> {
-        const result = await dbManager.run(
-            'UPDATE api_keys SET is_active = 0 WHERE id = ?',
-            [id]
+        const isActive = universalDb.queryBuilder.convertBoolean(false)
+        const result = await universalDb.run(
+            'UPDATE api_keys SET is_active = ? WHERE id = ?',
+            [isActive, id]
         )
-        return result.changes > 0
+        return (result.changes || 0) > 0
     }
 
     async update(updates: Partial<ApiKeyType>): Promise<void> {
@@ -115,8 +124,8 @@ export class ApiKey implements ApiKeyType {
         const values = fields.map(field => (updates as any)[field])
         values.push(this.id)
 
-        await dbManager.run(
-            `UPDATE api_keys SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        await universalDb.run(
+            `UPDATE api_keys SET ${setClause}, updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE id = ?`,
             values
         )
 
@@ -124,7 +133,8 @@ export class ApiKey implements ApiKeyType {
     }
 
     async deactivate(): Promise<void> {
-        await dbManager.run('UPDATE api_keys SET is_active = 0 WHERE id = ?', [this.id])
+        const isActive = universalDb.queryBuilder.convertBoolean(false)
+        await universalDb.run('UPDATE api_keys SET is_active = ? WHERE id = ?', [isActive, this.id])
         this.is_active = false
     }
 
@@ -134,25 +144,25 @@ export class ApiKey implements ApiKeyType {
     }
 
     async getUsageStats(days = 30): Promise<any> {
-        return await dbManager.all(`
+        return await universalDb.all(`
             SELECT 
                 DATE(created_at) as date,
                 COUNT(*) as requests,
-                SUM(success) as successful,
-                AVG(processing_time_ms) as avg_processing_time
+                SUM(CASE WHEN width IS NOT NULL THEN 1 ELSE 0 END) as successful,
+                AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) * 1000) as avg_processing_time
             FROM screenshots 
-            WHERE api_key_id = ? AND created_at >= datetime('now', '-${days} days')
+            WHERE api_key_id = ? AND created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
             GROUP BY DATE(created_at)
             ORDER BY date DESC
         `, [this.id])
     }
 
     async getTotalUsage(): Promise<{total: number, successful: number, failed: number}> {
-        const result = await dbManager.get(`
+        const result = await universalDb.get(`
             SELECT 
                 COUNT(*) as total,
-                SUM(success) as successful,
-                SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed
+                SUM(CASE WHEN width IS NOT NULL THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN width IS NULL THEN 1 ELSE 0 END) as failed
             FROM screenshots 
             WHERE api_key_id = ?
         `, [this.id])

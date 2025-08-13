@@ -1,4 +1,4 @@
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 import { getPlanConfig, calculateOverageAmount, PlanType } from './client'
 
 // Usage tracking is now handled by direct queries to screenshots table
@@ -22,7 +22,7 @@ export async function getCurrentSubscription(userId: number) {
   try {
     const now = new Date().toISOString()
     
-    return await dbManager.get(`
+    return await universalDb.get(`
       SELECT * 
       FROM subscriptions 
       WHERE user_id = ? 
@@ -46,14 +46,15 @@ export async function getActualUsageForPeriod(
   periodEnd: string
 ): Promise<number> {
   try {
-    const result = await dbManager.get(`
+    const result = await universalDb.get(`
       SELECT COUNT(*) as count
       FROM screenshots s
       JOIN api_keys ak ON s.api_key_id = ak.id
-      WHERE ak.created_by = ?
+      WHERE ak.user_id = ?
         AND s.created_at >= ?
         AND s.created_at < ?
-        AND s.success = 1
+        AND s.width IS NOT NULL
+        AND s.height IS NOT NULL
     `, [userId, periodStart, periodEnd])
     
     return result?.count || 0
@@ -128,7 +129,7 @@ export async function checkUsageLimit(userId: number): Promise<{
     }
 
     // Get plan config to determine included screenshots
-    const planConfig = getPlanConfig(subscription.plan_type as PlanType)
+    const planConfig = getPlanConfig(subscription.plan_id as PlanType)
     
     // Get actual usage from screenshots table
     const actualUsed = await getActualUsageForPeriod(
@@ -140,7 +141,7 @@ export async function checkUsageLimit(userId: number): Promise<{
     const included = planConfig.screenshots
     const overage = Math.max(0, actualUsed - included)
     const remaining = Math.max(0, included - actualUsed)
-    const planType = subscription.plan_type
+    const planType = subscription.plan_id
     
     // For free tier, enforce hard limits; for paid plans, allow overages
     const allowed = planType === 'free' ? remaining > 0 : true
@@ -173,15 +174,16 @@ export async function getUserUsageStats(userId: number, days: number = 30) {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
-    return await dbManager.all(`
+    return await universalDb.all(`
       SELECT 
         DATE(s.created_at) as date,
         COUNT(*) as screenshots_count
       FROM screenshots s
       JOIN api_keys ak ON s.api_key_id = ak.id
-      WHERE ak.created_by = ? 
+      WHERE ak.user_id = ? 
         AND s.created_at >= ?
-        AND s.success = 1
+        AND s.width IS NOT NULL
+        AND s.height IS NOT NULL
       GROUP BY DATE(s.created_at)
       ORDER BY date ASC
     `, [userId, startDate.toISOString()])
@@ -194,15 +196,17 @@ export async function getUserUsageStats(userId: number, days: number = 30) {
 export async function createFreeTierSubscription(userId: number) {
   try {
     // Create a free subscription record
-    const result = await dbManager.run(`
+    const result = await universalDb.run(`
       INSERT INTO subscriptions (
         user_id,
-        plan_type,
+        stripe_subscription_id,
+        stripe_customer_id,
         status,
+        plan_id,
         current_period_start,
         current_period_end,
         cancel_at_period_end
-      ) VALUES (?, 'free', 'active', ?, ?, 0)
+      ) VALUES (?, 'free_tier', 'free_customer', 'active', 'free', ?, ?, ${universalDb.queryBuilder.convertBoolean(false)})
     `, [
       userId,
       new Date().toISOString(),

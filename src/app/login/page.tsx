@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Camera, Eye, EyeOff, LogIn } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -144,8 +145,18 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Sign Up Link */}
+        <div className="text-center mt-6 pt-6 border-t border-slate-200">
+          <p className="text-sm text-slate-600">
+            Don't have an account?{' '}
+            <Link href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium">
+              Sign up for free
+            </Link>
+          </p>
+        </div>
+
         {/* Footer */}
-        <div className="text-center mt-6">
+        <div className="text-center mt-4">
           <p className="text-sm text-slate-500">
             Powered by NiceShot API v1.0
           </p>

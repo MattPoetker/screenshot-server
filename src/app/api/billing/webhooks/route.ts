@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe/client'
-import { saveSubscriptionToDatabase, createBillingCycle } from '@/lib/stripe/subscriptions'
-import dbManager from '@/lib/db'
+import { saveSubscriptionToDatabase } from '@/lib/stripe/subscriptions'
+import universalDb from '@/lib/db/universal'
 import Stripe from 'stripe'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
@@ -14,6 +14,9 @@ export async function POST(request: NextRequest) {
     let event: Stripe.Event
 
     try {
+      if (!stripe) {
+        return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 })
+      }
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err) {
       console.error('Webhook signature verification failed:', err)
@@ -77,19 +80,19 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   try {
-    await dbManager.run(`
+    await universalDb.run(`
       UPDATE subscriptions SET
         status = ?,
         current_period_start = ?,
         current_period_end = ?,
         cancel_at_period_end = ?,
-        updated_at = CURRENT_TIMESTAMP
+        updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()}
       WHERE stripe_subscription_id = ?
     `, [
       subscription.status,
-      new Date(subscription.current_period_start * 1000).toISOString(),
-      new Date(subscription.current_period_end * 1000).toISOString(),
-      subscription.cancel_at_period_end ? 1 : 0,
+      new Date((subscription as any).current_period_start * 1000).toISOString(),
+      new Date((subscription as any).current_period_end * 1000).toISOString(),
+      universalDb.queryBuilder.convertBoolean(subscription.cancel_at_period_end),
       subscription.id
     ])
 
@@ -101,10 +104,10 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   try {
-    await dbManager.run(`
+    await universalDb.run(`
       UPDATE subscriptions SET
         status = 'canceled',
-        updated_at = CURRENT_TIMESTAMP
+        updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()}
       WHERE stripe_subscription_id = ?
     `, [subscription.id])
 
@@ -116,14 +119,15 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   try {
-    if (!invoice.subscription) return
+    const subscriptionId = (invoice as any).subscription
+    if (!subscriptionId) return
 
     // Mark billing cycle as paid
-    await dbManager.run(`
+    await universalDb.run(`
       UPDATE billing_cycles SET
         status = 'paid',
         stripe_invoice_id = ?,
-        updated_at = CURRENT_TIMESTAMP
+        updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()}
       WHERE subscription_id = (
         SELECT id FROM subscriptions 
         WHERE stripe_subscription_id = ?
@@ -132,7 +136,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       AND billing_period_end >= ?
     `, [
       invoice.id,
-      invoice.subscription,
+      subscriptionId,
       new Date(invoice.period_start * 1000).toISOString(),
       new Date(invoice.period_end * 1000).toISOString()
     ])
@@ -145,15 +149,16 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   try {
-    if (!invoice.subscription) return
+    const subscriptionId = (invoice as any).subscription
+    if (!subscriptionId) return
 
     // Update subscription status if needed
-    await dbManager.run(`
+    await universalDb.run(`
       UPDATE subscriptions SET
         status = 'past_due',
-        updated_at = CURRENT_TIMESTAMP
+        updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()}
       WHERE stripe_subscription_id = ?
-    `, [invoice.subscription])
+    `, [subscriptionId])
 
     console.log('Invoice payment failed:', invoice.id)
   } catch (error) {
@@ -174,7 +179,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
 
     // The subscription should already be created, but we can ensure it's properly set up
-    if (session.subscription) {
+    if (session.subscription && stripe) {
       const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
       await saveSubscriptionToDatabase(subscription, userId, planType as 'pro' | 'enterprise')
     }

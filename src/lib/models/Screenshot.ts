@@ -1,4 +1,4 @@
-import dbManager from '../db'
+import universalDb from '../db/universal'
 import type { Screenshot as ScreenshotType } from '../../types'
 
 export class Screenshot implements ScreenshotType {
@@ -18,12 +18,18 @@ export class Screenshot implements ScreenshotType {
     request_id?: string
     capture_type?: string
     file_path!: string
-    file_name!: string
+    filename!: string
     file_size?: number
     processing_time?: number
     user_agent?: string
     ip_address?: string
     metadata?: string
+    
+    // Storage-related fields
+    storage_provider?: string
+    storage_url?: string
+    public_url?: string
+    cdn_url?: string
 
     constructor(data: any) {
         Object.assign(this, data)
@@ -38,6 +44,7 @@ export class Screenshot implements ScreenshotType {
     }
 
     static async create(screenshotData: {
+        user_id?: number
         api_key_id: number
         url: string
         image_path: string
@@ -49,34 +56,38 @@ export class Screenshot implements ScreenshotType {
         processing_time_ms?: number
         metadata?: any
         request_id?: string
-        file_name?: string
+        filename?: string
         file_size?: number
         user_agent?: string
         ip_address?: string
+        storage_provider?: string
+        storage_url?: string
+        public_url?: string
+        cdn_url?: string
     }): Promise<Screenshot> {
-        const result = await dbManager.run(`
+        const result = await universalDb.run(`
             INSERT INTO screenshots (
-                api_key_id, url, file_path, file_name, format, width, height, 
-                success, error_message, processing_time, metadata, request_id,
-                file_size, user_agent, ip_address, capture_type
+                user_id, api_key_id, url, filename, file_path, file_size, width, height,
+                device_type, format, full_page, wait_time, storage_provider, 
+                storage_url, cdn_url, metadata
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
+            screenshotData.user_id || null,
             screenshotData.api_key_id,
             screenshotData.url,
+            screenshotData.filename || 'screenshot.png', // Maps to filename
             screenshotData.image_path, // Maps to file_path
-            screenshotData.file_name || 'screenshot.png',
-            screenshotData.format || 'png',
+            screenshotData.file_size || null,
             screenshotData.width || null,
             screenshotData.height || null,
-            screenshotData.success !== undefined ? (screenshotData.success ? 1 : 0) : 1,
-            screenshotData.error_message || null,
-            screenshotData.processing_time_ms || null,
-            screenshotData.metadata ? JSON.stringify(screenshotData.metadata) : '{}',
-            screenshotData.request_id || null,
-            screenshotData.file_size || null,
-            screenshotData.user_agent || null,
-            screenshotData.ip_address || null,
-            'screenshot'
+            screenshotData.device_type || 'desktop',
+            screenshotData.format || 'png',
+            universalDb.queryBuilder.convertBoolean(screenshotData.full_page || false),
+            screenshotData.wait_time || 0,
+            screenshotData.storage_provider || 'local',
+            screenshotData.storage_url || null,
+            screenshotData.cdn_url || null,
+            screenshotData.metadata ? JSON.stringify(screenshotData.metadata) : '{}'
         ])
 
         const screenshot = await Screenshot.findById(result.id!)
@@ -87,16 +98,16 @@ export class Screenshot implements ScreenshotType {
     }
 
     static async findById(id: number): Promise<Screenshot | null> {
-        const row = await dbManager.get('SELECT * FROM screenshots WHERE id = ?', [id])
+        const row = await universalDb.get('SELECT * FROM screenshots WHERE id = ?', [id])
         return row ? new Screenshot(row) : null
     }
 
     static async findAll(limit = 100, offset = 0): Promise<Screenshot[]> {
-        const rows = await dbManager.all(`
+        const rows = await universalDb.all(`
             SELECT s.*, ak.name as api_key_name, u.username 
             FROM screenshots s
             LEFT JOIN api_keys ak ON s.api_key_id = ak.id
-            LEFT JOIN users u ON ak.created_by = u.id
+            LEFT JOIN users u ON ak.user_id = u.id
             ORDER BY s.created_at DESC 
             LIMIT ? OFFSET ?
         `, [limit, offset])
@@ -105,7 +116,7 @@ export class Screenshot implements ScreenshotType {
     }
 
     static async findByApiKey(apiKeyId: number, limit = 100, offset = 0): Promise<Screenshot[]> {
-        const rows = await dbManager.all(`
+        const rows = await universalDb.all(`
             SELECT * FROM screenshots 
             WHERE api_key_id = ? 
             ORDER BY created_at DESC 
@@ -116,7 +127,7 @@ export class Screenshot implements ScreenshotType {
     }
 
     static async findByUrl(url: string, limit = 10): Promise<Screenshot[]> {
-        const rows = await dbManager.all(`
+        const rows = await universalDb.all(`
             SELECT s.*, ak.name as api_key_name 
             FROM screenshots s
             LEFT JOIN api_keys ak ON s.api_key_id = ak.id
@@ -134,14 +145,14 @@ export class Screenshot implements ScreenshotType {
         failed: number
         avgProcessingTime: number
     }> {
-        const result = await dbManager.get(`
+        const result = await universalDb.get(`
             SELECT 
                 COUNT(*) as total,
-                SUM(success) as successful,
-                SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN success = ${universalDb.queryBuilder.convertBoolean(true)} THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN success = ${universalDb.queryBuilder.convertBoolean(false)} THEN 1 ELSE 0 END) as failed,
                 AVG(processing_time_ms) as avg_processing_time
             FROM screenshots 
-            WHERE created_at >= datetime('now', '-${days} days')
+            WHERE created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
         `)
         
         return {
@@ -159,15 +170,15 @@ export class Screenshot implements ScreenshotType {
         failed: number
         avgProcessingTime: number
     }>> {
-        const rows = await dbManager.all(`
+        const rows = await universalDb.all(`
             SELECT 
                 DATE(created_at) as date,
                 COUNT(*) as total,
-                SUM(success) as successful,
-                SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN success = ${universalDb.queryBuilder.convertBoolean(true)} THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN success = ${universalDb.queryBuilder.convertBoolean(false)} THEN 1 ELSE 0 END) as failed,
                 AVG(processing_time_ms) as avg_processing_time
             FROM screenshots 
-            WHERE created_at >= datetime('now', '-${days} days')
+            WHERE created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
             GROUP BY DATE(created_at)
             ORDER BY date DESC
         `)
@@ -186,13 +197,13 @@ export class Screenshot implements ScreenshotType {
         count: number
         percentage: number
     }>> {
-        const rows = await dbManager.all(`
+        const rows = await universalDb.all(`
             SELECT 
                 format,
                 COUNT(*) as count,
-                ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM screenshots WHERE created_at >= datetime('now', '-${days} days')), 2) as percentage
+                ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM screenshots WHERE created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'), 2) as percentage
             FROM screenshots 
-            WHERE created_at >= datetime('now', '-${days} days')
+            WHERE created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
             GROUP BY format
             ORDER BY count DESC
         `)
@@ -209,13 +220,13 @@ export class Screenshot implements ScreenshotType {
         api_key_name?: string
         username?: string
     }>> {
-        const rows = await dbManager.all(`
+        const rows = await universalDb.all(`
             SELECT 
                 s.id, s.url, s.format, s.success, s.created_at,
                 ak.name as api_key_name, u.username
             FROM screenshots s
             LEFT JOIN api_keys ak ON s.api_key_id = ak.id
-            LEFT JOIN users u ON ak.created_by = u.id
+            LEFT JOIN users u ON ak.user_id = u.id
             ORDER BY s.created_at DESC 
             LIMIT ?
         `, [limit])
@@ -224,7 +235,7 @@ export class Screenshot implements ScreenshotType {
     }
 
     static async delete(id: number): Promise<boolean> {
-        const result = await dbManager.run('DELETE FROM screenshots WHERE id = ?', [id])
+        const result = await universalDb.run('DELETE FROM screenshots WHERE id = ?', [id])
         return result.changes > 0
     }
 
@@ -238,7 +249,7 @@ export class Screenshot implements ScreenshotType {
         const values = fields.map(field => (updates as any)[field])
         values.push(this.id)
 
-        await dbManager.run(
+        await universalDb.run(
             `UPDATE screenshots SET ${setClause} WHERE id = ?`,
             values
         )

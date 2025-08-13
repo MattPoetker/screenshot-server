@@ -140,3 +140,4 @@ database/screenshots.db
 
 # Backup files
 *.backup
+core

@@ -2,11 +2,17 @@
 export interface User {
   id: number
   username: string
-  email?: string
+  email: string
   role: 'admin' | 'user'
   is_active: boolean
+  email_verified: boolean
+  email_verification_token?: string
+  email_verification_expires?: string
+  password_reset_token?: string
+  password_reset_expires?: string
   created_at: string
   last_login?: string
+  stripe_customer_id?: string
 }
 
 export interface ApiKey {

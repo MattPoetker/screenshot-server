@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
             await fs.writeFile(gifPath, gifResult.buffer)
 
             // Prepare screenshot data for database
+            const publicUrl = `https://images.sitelaunch.io/images/${filename}`
             screenshotData = {
                 api_key_id: apiKey.id,
                 url: config.url,
@@ -147,6 +148,11 @@ export async function POST(request: NextRequest) {
                 ip_address: request.headers.get('x-forwarded-for') || 
                            request.headers.get('x-real-ip') || 
                            undefined,
+                // Storage metadata (GIF still uses local storage for now)
+                storage_provider: 'local',
+                storage_url: gifPath,
+                public_url: publicUrl,
+                cdn_url: publicUrl,
                 metadata: {
                     ...gifResult.metadata,
                     captureType: 'scrolling-gif',

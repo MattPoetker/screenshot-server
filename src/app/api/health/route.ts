@@ -1,36 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 import { checkImagesDir } from '@/lib/config/storage'
 
 export async function GET(request: NextRequest) {
     try {
+        // Initialize database first
         await initializeDatabase()
         
-        // Test database connectivity
-        const result = await dbManager.get('SELECT 1 as test')
-        
+        // Check database health
+        const dbHealthy = await universalDb.healthCheck()
+        const connectionInfo = universalDb.getConnectionInfo()
+
         // Check if screenshots directory is writable
         const storageAccessible = checkImagesDir()
+
+        // Get system info
+        const systemInfo = {
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            node_version: process.version,
+            platform: process.platform,
+            arch: process.arch
+        }
+
+        // Overall health status
+        const healthy = dbHealthy && storageAccessible
+        const status = healthy ? 200 : 503
+
+        return NextResponse.json({
+            status: healthy ? 'healthy' : 'unhealthy',
+            timestamp: new Date().toISOString(),
+            database: {
+                healthy: dbHealthy,
+                dbType: universalDb.getDatabaseType(),
+                ...connectionInfo
+            },
+            storage: {
+                accessible: storageAccessible,
+                status: storageAccessible ? 'ok' : 'error'
+            },
+            system: systemInfo,
+            version: '2.0.0-nextjs-docker',
+            services: {
+                database: dbHealthy ? 'ok' : 'error',
+                storage: storageAccessible ? 'ok' : 'error'
+            }
+        }, { status })
+
+    } catch (error) {
+        console.error('Health check failed:', error)
         
         return NextResponse.json({
-            status: 'up',
+            status: 'unhealthy',
             timestamp: new Date().toISOString(),
-            database: {
-                connected: !!result,
-                test: result?.test === 1
-            },
-            storage: storageAccessible ? 'accessible' : 'inaccessible',
-            version: '2.0.0-nextjs'
-        })
-    } catch (error) {
-        return NextResponse.json({
-            status: 'error',
-            timestamp: new Date().toISOString(),
-            database: {
-                connected: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Health check failed',
+            services: {
+                database: 'error',
+                storage: 'unknown'
             }
-        }, { status: 500 })
+        }, { status: 503 })
     }
 }

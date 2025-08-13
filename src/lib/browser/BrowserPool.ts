@@ -126,12 +126,12 @@ export class BrowserPool {
   private cleanupInterval?: NodeJS.Timeout
   
   public readonly config: BrowserPoolConfig = {
-    maxBrowsers: 3,
-    browserMaxUses: 50,
-    browserIdleTimeout: 5 * 60 * 1000, // 5 minutes
-    memoryCheckInterval: 30 * 1000, // 30 seconds
-    maxMemoryMB: 1024,
-    forceCleanupInterval: 10 * 60 * 1000 // 10 minutes
+    maxBrowsers: parseInt(process.env.MAX_BROWSERS || '10'), // Increased for production
+    browserMaxUses: parseInt(process.env.BROWSER_MAX_USES || '100'), // Increased capacity
+    browserIdleTimeout: parseInt(process.env.BROWSER_IDLE_TIMEOUT || '300000'), // 5 minutes
+    memoryCheckInterval: parseInt(process.env.MEMORY_CHECK_INTERVAL || '30000'), // 30 seconds
+    maxMemoryMB: parseInt(process.env.MAX_MEMORY_MB || '2048'), // Increased for production
+    forceCleanupInterval: parseInt(process.env.FORCE_CLEANUP_INTERVAL || '600000') // 10 minutes
   }
   
   private constructor() {
@@ -165,20 +165,20 @@ export class BrowserPool {
   
   private async createBrowser(): Promise<Browser> {
     return await puppeteer.launch({
+      executablePath: '/usr/bin/chromium-browser',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
-        '--disable-extensions',
-        '--disable-plugins',
-        '--memory-pressure-off',
-        `--max-old-space-size=${this.config.maxMemoryMB}`,
-        '--single-process',
-        '--no-zygote'
+        '--window-size=1920,1080'
       ],
-      headless: true,
-      timeout: 30000
+      headless: 'new',  // Use new headless mode
+      timeout: 30000,
+      defaultViewport: {
+        width: 1920,
+        height: 1080
+      }
     })
   }
   

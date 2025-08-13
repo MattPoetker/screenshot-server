@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe, getPlanConfig, PlanType } from '@/lib/stripe/client'
 import { authenticateJWT } from '@/lib/auth/middleware'
 import { saveSubscriptionToDatabase } from '@/lib/stripe/subscriptions'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       })
     } catch (error) {
       // If payment method is already attached, continue
-      if (error.code !== 'resource_already_exists') {
+      if (error && typeof error === 'object' && 'code' in error && error.code !== 'resource_already_exists') {
         throw error
       }
       console.log('Payment method already attached to customer')
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Check if user already has an active subscription
-    const existingSubscription = await dbManager.get(
+    const existingSubscription = await universalDb.get(
       'SELECT * FROM subscriptions WHERE user_id = ? AND status IN ("active", "trialing")',
       [user.id]
     )
@@ -94,8 +94,8 @@ export async function POST(request: NextRequest) {
       )
 
       // Update database
-      await dbManager.run(
-        'UPDATE subscriptions SET plan_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      await universalDb.run(
+        `UPDATE subscriptions SET plan_type = ?, updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE id = ?`,
         [planType, existingSubscription.id]
       )
 
@@ -112,8 +112,8 @@ export async function POST(request: NextRequest) {
       // Handle existing subscription without Stripe ID (like free plan)
       if (existingSubscription) {
         // Update the existing local subscription to the new plan
-        await dbManager.run(
-          'UPDATE subscriptions SET plan_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        await universalDb.run(
+          `UPDATE subscriptions SET plan_type = ?, updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE id = ?`,
           [planType, existingSubscription.id]
         )
       }
@@ -133,14 +133,14 @@ export async function POST(request: NextRequest) {
       // Save to database (update existing or create new)
       if (existingSubscription) {
         // Update existing subscription record with Stripe details
-        await dbManager.run(
-          'UPDATE subscriptions SET stripe_subscription_id = ?, stripe_customer_id = ?, status = ?, current_period_start = ?, current_period_end = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        await universalDb.run(
+          `UPDATE subscriptions SET stripe_subscription_id = ?, stripe_customer_id = ?, status = ?, current_period_start = ?, current_period_end = ?, updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE id = ?`,
           [
             subscription.id,
             subscription.customer,
             subscription.status,
-            new Date(subscription.current_period_start * 1000).toISOString(),
-            new Date(subscription.current_period_end * 1000).toISOString(),
+            new Date((subscription as any).current_period_start * 1000).toISOString(),
+            new Date((subscription as any).current_period_end * 1000).toISOString(),
             existingSubscription.id
           ]
         )
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     console.error('Subscription creation error:', error)
     return NextResponse.json({
       success: false,
-      error: error.message || 'Failed to create subscription'
+      error: error instanceof Error ? error.message : 'Failed to create subscription'
     }, { status: 500 })
   }
 }

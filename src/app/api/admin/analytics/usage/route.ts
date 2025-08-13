@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
-import dbManager from '@/lib/db'
-import { authenticateAdmin } from '@/lib/auth/middleware'
+import universalDb from '@/lib/db/universal'
+import { authenticateJWT } from '@/lib/auth/middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
@@ -18,23 +18,24 @@ export async function GET(request: NextRequest) {
         const { searchParams } = request.nextUrl
         const days = parseInt(searchParams.get('days') || '30')
 
-        const usageStats = await dbManager.all(`
+        const usageStats = await universalDb.all(`
             SELECT 
                 ak.name as api_key_name,
                 ak.id as api_key_id,
                 ak.rate_limit,
                 COUNT(s.id) as total_requests,
-                SUM(CASE WHEN s.success = 1 THEN 1 ELSE 0 END) as successful_requests,
+                SUM(CASE WHEN s.success = ${universalDb.queryBuilder.convertBoolean(true)} THEN 1 ELSE 0 END) as successful_requests,
                 MAX(s.created_at) as last_used,
                 SUM(COALESCE(s.file_size, 0)) as total_bandwidth,
-                AVG(CASE WHEN s.success = 1 THEN s.processing_time_ms END) as avg_processing_time
+                AVG(CASE WHEN s.success = ${universalDb.queryBuilder.convertBoolean(true)} THEN s.processing_time_ms END) as avg_processing_time
             FROM api_keys ak
             LEFT JOIN screenshots s ON ak.id = s.api_key_id 
-                AND s.created_at >= datetime('now', '-${days} days')
-            WHERE ak.is_active = 1
+                AND s.created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
+            WHERE ak.is_active = ${universalDb.queryBuilder.convertBoolean(true)}
+                AND ak.user_id = ?
             GROUP BY ak.id, ak.name, ak.rate_limit
             ORDER BY total_requests DESC
-        `)
+        `, [authResult.user!.id])
 
         return NextResponse.json({
             success: true,

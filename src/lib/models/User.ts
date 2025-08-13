@@ -1,15 +1,21 @@
 import bcrypt from 'bcryptjs'
-import dbManager from '../db'
+import universalDb from '../db/universal'
 import type { User as UserType } from '../../types'
 
 export class User implements UserType {
     id!: number
     username!: string
-    email?: string
+    email!: string
     role!: 'admin' | 'user'
     is_active!: boolean
+    email_verified!: boolean
+    email_verification_token?: string
+    email_verification_expires?: string
+    password_reset_token?: string
+    password_reset_expires?: string
     created_at!: string
     last_login?: string
+    stripe_customer_id?: string
 
     constructor(data: any) {
         Object.assign(this, data)
@@ -17,21 +23,27 @@ export class User implements UserType {
 
     static async create(userData: {
         username: string
-        email?: string
+        email: string
         password: string
         role?: 'admin' | 'user'
+        email_verified?: boolean
     }): Promise<User> {
         const hashedPassword = await bcrypt.hash(userData.password, 12)
 
-        const result = await dbManager.run(`
-            INSERT INTO users (username, email, password_hash, role) 
-            VALUES (?, ?, ?, ?)
-        `, [
-            userData.username,
-            userData.email,
-            hashedPassword,
-            userData.role || 'user'
-        ])
+        const emailVerified = userData.email_verified ?? false
+        const result = await universalDb.run(
+            universalDb.queryBuilder.buildQuery(`
+                INSERT INTO users (username, email, password_hash, role, email_verified) 
+                VALUES (?, ?, ?, ?, ?)
+            `, true),
+            [
+                userData.username,
+                userData.email,
+                hashedPassword,
+                userData.role || 'user',
+                universalDb.queryBuilder.convertBoolean(emailVerified)
+            ]
+        )
 
         const user = await User.findById(result.id!)
         if (!user) {
@@ -41,27 +53,28 @@ export class User implements UserType {
     }
 
     static async findById(id: number): Promise<User | null> {
-        const row = await dbManager.get('SELECT * FROM users WHERE id = ?', [id])
+        const row = await universalDb.get(universalDb.queryBuilder.buildQuery('SELECT * FROM users WHERE id = ?'), [id])
         return row ? new User(row) : null
     }
 
     static async findByUsername(username: string): Promise<User | null> {
-        const row = await dbManager.get('SELECT * FROM users WHERE username = ?', [username])
+        const row = await universalDb.get(universalDb.queryBuilder.buildQuery('SELECT * FROM users WHERE username = ?'), [username])
         return row ? new User(row) : null
     }
 
     static async findByEmail(email: string): Promise<User | null> {
-        const row = await dbManager.get('SELECT * FROM users WHERE email = ?', [email])
+        const row = await universalDb.get(universalDb.queryBuilder.buildQuery('SELECT * FROM users WHERE email = ?'), [email])
         return row ? new User(row) : null
     }
 
     static async findAll(limit = 100, offset = 0): Promise<User[]> {
-        const rows = await dbManager.all(`
+        const isActiveValue = universalDb.queryBuilder.convertBoolean(true)
+        const rows = await universalDb.all(universalDb.queryBuilder.buildQuery(`
             SELECT * FROM users 
-            WHERE is_active = 1 
+            WHERE is_active = ? 
             ORDER BY created_at DESC 
             LIMIT ? OFFSET ?
-        `, [limit, offset])
+        `), [isActiveValue, limit, offset])
         
         return rows.map(row => new User(row))
     }
@@ -79,8 +92,8 @@ export class User implements UserType {
 
         // Update last login (skip if database is read-only)
         try {
-            await dbManager.run(
-                'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
+            await universalDb.run(
+                universalDb.queryBuilder.buildQuery(`UPDATE users SET last_login = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE id = ?`),
                 [user.id]
             )
         } catch (error) {
@@ -92,8 +105,8 @@ export class User implements UserType {
 
     async updatePassword(newPassword: string): Promise<boolean> {
         const hashedPassword = await bcrypt.hash(newPassword, 12)
-        await dbManager.run(
-            'UPDATE users SET password_hash = ? WHERE id = ?',
+        await universalDb.run(
+            universalDb.queryBuilder.buildQuery('UPDATE users SET password_hash = ? WHERE id = ?'),
             [hashedPassword, this.id]
         )
         return true
@@ -107,8 +120,8 @@ export class User implements UserType {
         const values = fields.map(field => (updates as any)[field])
         values.push(this.id)
 
-        await dbManager.run(
-            `UPDATE users SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        await universalDb.run(
+            universalDb.queryBuilder.buildQuery(`UPDATE users SET ${setClause}, updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE id = ?`),
             values
         )
 

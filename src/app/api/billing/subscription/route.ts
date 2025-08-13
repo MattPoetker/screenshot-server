@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     try {
       subscription = await getUserSubscription(authResult.user.id)
     } catch (error) {
-      console.warn('Failed to get user subscription:', error.message)
+      console.warn('Failed to get user subscription:', error instanceof Error ? error.message : String(error))
     }
     
     if (!subscription) {

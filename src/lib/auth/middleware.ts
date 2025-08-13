@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
 import User from '@/lib/models/User'
 import ApiKey from '@/lib/models/ApiKey'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 import { initializeDatabase } from '@/lib/db/init'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -60,8 +60,13 @@ export async function authenticateAdmin(request: NextRequest): Promise<AuthResul
 
 export async function authenticateApiKey(request: NextRequest): Promise<ApiKeyAuthResult> {
     try {
-        const authHeader = request.headers.get('authorization')
-        const token = authHeader?.split(' ')[1]
+        // Check for X-API-Key header first (preferred), then Authorization header
+        let token: string | null = request.headers.get('x-api-key')
+        
+        if (!token) {
+            const authHeader = request.headers.get('authorization')
+            token = authHeader?.split(' ')[1] || null
+        }
 
         if (!token) {
             return { success: false, error: 'API key required' }
@@ -119,6 +124,11 @@ export async function login(username: string, password: string): Promise<LoginRe
             return { success: false, error: 'Invalid credentials' }
         }
 
+        // Check if email is verified
+        if (!user.email_verified) {
+            return { success: false, error: 'Please verify your email before logging in' }
+        }
+
         const token = generateToken(user)
         
         return {
@@ -144,7 +154,7 @@ export async function checkRateLimit(apiKey: ApiKey): Promise<{ allowed: boolean
         windowStart.setHours(windowStart.getHours() - 1) // 1-hour window
 
         // Count requests in the last hour from database
-        const result = await dbManager.get(`
+        const result = await universalDb.get(`
             SELECT COUNT(*) as count 
             FROM screenshots 
             WHERE api_key_id = ? AND created_at >= ?

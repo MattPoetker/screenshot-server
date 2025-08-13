@@ -10,7 +10,7 @@ interface DashboardLayoutProps {
   requireAdmin?: boolean
 }
 
-export default function DashboardLayout({ children, requireAdmin = true }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, requireAdmin = false }: DashboardLayoutProps) {
   const { user, logout } = useAuth()
 
   return (

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 import Screenshot from '@/lib/models/Screenshot'
-import { authenticateAdmin } from '@/lib/auth/middleware'
+import { authenticateJWT } from '@/lib/auth/middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
         const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
         const offset = (page - 1) * limit
 
-        // Build WHERE clause based on filters
-        let whereClause = '1=1'
-        const params: any[] = []
+        // Build WHERE clause based on filters (restricted to user's API keys)
+        let whereClause = 'ak.user_id = ?'
+        const params: any[] = [authResult.user!.id]
 
         if (searchParams.get('format')) {
             whereClause += ' AND s.format = ?'
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
         if (searchParams.get('success') !== null) {
             whereClause += ' AND s.success = ?'
-            params.push(searchParams.get('success') === 'true' ? 1 : 0)
+            params.push(universalDb.queryBuilder.convertBoolean(searchParams.get('success') === 'true'))
         }
 
         if (searchParams.get('start_date')) {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Get total count
-        const totalResult = await dbManager.get(
+        const totalResult = await universalDb.get(
             `SELECT COUNT(*) as total FROM screenshots s 
              LEFT JOIN api_keys ak ON s.api_key_id = ak.id 
              WHERE ${whereClause}`,
@@ -59,14 +59,14 @@ export async function GET(request: NextRequest) {
         )
 
         // Get paginated results
-        const screenshots = await dbManager.all(
+        const screenshots = await universalDb.all(
             `SELECT 
                 s.*,
                 ak.name as api_key_name,
                 u.username
              FROM screenshots s
              LEFT JOIN api_keys ak ON s.api_key_id = ak.id
-             LEFT JOIN users u ON ak.created_by = u.id
+             LEFT JOIN users u ON ak.user_id = u.id
              WHERE ${whereClause}
              ORDER BY s.created_at DESC
              LIMIT ? OFFSET ?`,
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
             data: {
                 screenshots: screenshots.map(s => ({
                     ...s,
-                    success: s.success === 1,
+                    success: universalDb.queryBuilder.convertBoolean(s.success),
                     metadata: s.metadata ? JSON.parse(s.metadata) : null
                 })),
                 pagination: {
@@ -102,8 +102,8 @@ export async function DELETE(request: NextRequest) {
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
@@ -118,11 +118,15 @@ export async function DELETE(request: NextRequest) {
             }, { status: 400 })
         }
 
-        // Delete screenshots
+        // Delete screenshots (only user's own screenshots)
         const placeholders = ids.map(() => '?').join(',')
-        const result = await dbManager.run(
-            `DELETE FROM screenshots WHERE id IN (${placeholders})`,
-            ids
+        const result = await universalDb.run(
+            `DELETE FROM screenshots 
+             WHERE id IN (${placeholders}) 
+             AND api_key_id IN (
+                 SELECT id FROM api_keys WHERE user_id = ?
+             )`,
+            [...ids, authResult.user!.id]
         )
 
         return NextResponse.json({

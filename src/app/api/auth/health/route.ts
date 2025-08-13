@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 import User from '@/lib/models/User'
 
 export async function GET(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         let writeTest = false
         try {
             if (user) {
-                await dbManager.run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id])
+                await universalDb.run(`UPDATE users SET last_login = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE id = ?`, [user.id])
                 writeTest = true
             }
         } catch (writeError: any) {

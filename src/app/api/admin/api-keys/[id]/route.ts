@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
 import ApiKey from '@/lib/models/ApiKey'
-import { authenticateAdmin } from '@/lib/auth/middleware'
+import { authenticateJWT } from '@/lib/auth/middleware'
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
@@ -27,6 +27,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         const apiKey = await ApiKey.findById(keyId)
         if (!apiKey) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'API key not found' 
+            }, { status: 404 })
+        }
+
+        // Verify API key belongs to the authenticated user
+        if (apiKey.created_by !== authResult.user!.id) {
             return NextResponse.json({ 
                 success: false,
                 error: 'API key not found' 
@@ -52,13 +60,23 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
 
         const keyId = parseInt(params.id)
+        
+        // Verify API key belongs to the authenticated user before deleting
+        const apiKey = await ApiKey.findById(keyId)
+        if (!apiKey || apiKey.created_by !== authResult.user!.id) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'API key not found' 
+            }, { status: 404 })
+        }
+        
         const deleted = await ApiKey.delete(keyId)
         
         if (!deleted) {

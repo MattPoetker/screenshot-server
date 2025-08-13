@@ -4,7 +4,7 @@ import Screenshot from '@/lib/models/Screenshot'
 import { authenticateApiKey, checkRateLimit } from '@/lib/auth/middleware'
 import { takeScreenshot } from '@/lib/screenshot/capture'
 import { trackScreenshotUsage, checkUsageLimit } from '@/lib/stripe/usage'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 import type { ScreenshotRequest, ScreenshotResponse } from '@/types'
 
 export async function POST(request: NextRequest) {
@@ -91,21 +91,19 @@ export async function POST(request: NextRequest) {
 
         // Prepare screenshot data for database
         screenshotData = {
+            user_id: (apiKey as any).user_id || (apiKey as any).created_by,
             api_key_id: apiKey.id,
             url: config.url,
             image_path: result.imagePath, // Maps to file_path
-            file_name: result.filename,
+            filename: result.filename,
             format: config.format || 'png',
             width: result.metadata.width,
             height: result.metadata.height,
-            success: true,
-            processing_time_ms: processingTime,
             file_size: result.metadata.size,
-            request_id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            user_agent: request.headers.get('user-agent') || undefined,
-            ip_address: request.headers.get('x-forwarded-for') || 
-                       request.headers.get('x-real-ip') || 
-                       undefined,
+            // Storage metadata
+            storage_provider: process.env.STORAGE_PROVIDER || 'local',
+            storage_url: result.storageUrl,
+            cdn_url: result.publicUrl,
             metadata: {
                 ...result.metadata,
                 processingTime,
@@ -153,10 +151,7 @@ export async function POST(request: NextRequest) {
         if (screenshotData) {
             try {
                 await Screenshot.create({
-                    ...screenshotData,
-                    success: false,
-                    error_message: error instanceof Error ? error.message : 'Unknown error',
-                    processing_time_ms: processingTime
+                    ...screenshotData
                 })
             } catch (dbError) {
                 console.error('Failed to log error to database:', dbError)

@@ -6,6 +6,7 @@ import type { ScreenshotRequest } from '@/types'
 import { getDevicePreset } from '@/lib/config/devicePresets'
 import { BrowserPool, BrowserWrapper } from '@/lib/browser/BrowserPool'
 import { IMAGES_DIR, ensureImagesDir } from '@/lib/config/storage'
+import { StorageFactory } from '@/lib/storage'
 
 const BROWSER_TIMEOUT = 30000
 
@@ -13,6 +14,7 @@ interface ScreenshotResult {
     filename: string
     imagePath: string
     publicUrl: string
+    storageUrl?: string
     metadata: {
         width: number
         height: number
@@ -143,14 +145,8 @@ export async function takeScreenshot(config: ScreenshotRequest): Promise<Screens
         const extension = format === 'jpeg' ? 'jpg' : format
         const filename = `thumbnail-${timestamp}.${extension}`
         
-        // Ensure images directory exists
-        ensureImagesDir()
-        
-        const imagePath = path.join(IMAGES_DIR, filename)
-
-        // Take screenshot
+        // Take screenshot to buffer first
         const screenshotOptions: ScreenshotOptions = {
-            path: imagePath as `${string}.png` | `${string}.jpeg` | `${string}.webp`,
             fullPage: config.fullPage !== false,
             type: format as 'png' | 'jpeg' | 'webp'
         }
@@ -159,21 +155,46 @@ export async function takeScreenshot(config: ScreenshotRequest): Promise<Screens
             screenshotOptions.quality = Math.min(100, Math.max(0, config.quality))
         }
 
-        await page.screenshot(screenshotOptions)
+        const screenshotBuffer = await page.screenshot(screenshotOptions) as Buffer
 
-        // Get file stats
-        const stats = await fs.stat(imagePath)
-        const size = stats.size
+        // Get storage service and upload
+        const storageService = StorageFactory.getInstance()
+        const contentType = getContentType(format)
+        
+        const uploadResult = await storageService.upload(screenshotBuffer, filename, contentType)
+        
+        // For backward compatibility, also save locally if using R2
+        let localImagePath: string | undefined
+        if (process.env.STORAGE_PROVIDER === 'r2') {
+            try {
+                // Ensure local directory exists for temporary storage
+                ensureImagesDir()
+                localImagePath = path.join(IMAGES_DIR, filename)
+                await fs.writeFile(localImagePath, screenshotBuffer)
+                
+                // Optional: Clean up local file after a delay (to allow immediate access)
+                setTimeout(async () => {
+                    try {
+                        await fs.unlink(localImagePath!)
+                    } catch (error) {
+                        console.warn('Failed to cleanup temporary local file:', error)
+                    }
+                }, 60000) // Clean up after 1 minute
+            } catch (error) {
+                console.warn('Failed to save temporary local copy:', error)
+            }
+        }
 
         return {
             filename,
-            imagePath,
-            publicUrl: `https://images.sitelaunch.io/images/${filename}`,
+            imagePath: uploadResult.localPath || localImagePath || uploadResult.storageUrl,
+            publicUrl: uploadResult.publicUrl,
+            storageUrl: uploadResult.storageUrl,
             metadata: {
                 width: deviceConfig.width,
                 height: deviceConfig.height,
                 format,
-                size
+                size: uploadResult.size
             }
         }
 
@@ -186,6 +207,21 @@ export async function takeScreenshot(config: ScreenshotRequest): Promise<Screens
         if (browserWrapper) {
             await returnBrowser(browserWrapper)
         }
+    }
+}
+
+// Helper function to get content type
+function getContentType(format: string): string {
+    switch (format) {
+        case 'png':
+            return 'image/png'
+        case 'jpeg':
+        case 'jpg':
+            return 'image/jpeg'
+        case 'webp':
+            return 'image/webp'
+        default:
+            return 'image/png'
     }
 }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
-import dbManager from '@/lib/db'
-import { authenticateAdmin } from '@/lib/auth/middleware'
+import universalDb from '@/lib/db/universal'
+import { authenticateJWT } from '@/lib/auth/middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
@@ -20,42 +20,55 @@ export async function GET(request: NextRequest) {
 
         const [usageStats, formatStats, errorStats] = await Promise.all([
             // Usage over time
-            dbManager.all(`
+            universalDb.all(`
                 SELECT 
-                    DATE(created_at) as date,
+                    DATE(s.created_at) as date,
                     COUNT(*) as total_requests,
-                    SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_requests,
-                    AVG(CASE WHEN success = 1 THEN processing_time_ms END) as avg_processing_time
-                FROM screenshots 
-                WHERE created_at >= datetime('now', '-${days} days')
-                GROUP BY DATE(created_at)
+                    SUM(CASE WHEN s.success = ${universalDb.queryBuilder.convertBoolean(true)} THEN 1 ELSE 0 END) as successful_requests,
+                    AVG(CASE WHEN s.success = ${universalDb.queryBuilder.convertBoolean(true)} THEN s.processing_time_ms END) as avg_processing_time
+                FROM screenshots s
+                JOIN api_keys ak ON s.api_key_id = ak.id
+                WHERE s.created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
+                    AND ak.user_id = ?
+                GROUP BY DATE(s.created_at)
                 ORDER BY date ASC
-            `),
+            `, [authResult.user!.id]),
             
             // Format distribution
-            dbManager.all(`
+            universalDb.all(`
                 SELECT 
-                    format,
+                    s.format,
                     COUNT(*) as count,
-                    ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM screenshots WHERE created_at >= datetime('now', '-${days} days'))), 2) as percentage
-                FROM screenshots 
-                WHERE created_at >= datetime('now', '-${days} days')
-                GROUP BY format
+                    ROUND((COUNT(*) * 100.0 / (
+                        SELECT COUNT(*) 
+                        FROM screenshots s2 
+                        JOIN api_keys ak2 ON s2.api_key_id = ak2.id 
+                        WHERE s2.created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
+                            AND ak2.user_id = ?
+                    )), 2) as percentage
+                FROM screenshots s
+                JOIN api_keys ak ON s.api_key_id = ak.id
+                WHERE s.created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
+                    AND ak.user_id = ?
+                GROUP BY s.format
                 ORDER BY count DESC
-            `),
+            `, [authResult.user!.id, authResult.user!.id]),
             
             // Error analysis
-            dbManager.all(`
+            universalDb.all(`
                 SELECT 
-                    error_message,
+                    s.error_message,
                     COUNT(*) as count
-                FROM screenshots 
-                WHERE success = 0 AND created_at >= datetime('now', '-${days} days')
-                AND error_message IS NOT NULL
-                GROUP BY error_message
+                FROM screenshots s
+                JOIN api_keys ak ON s.api_key_id = ak.id
+                WHERE s.success = ${universalDb.queryBuilder.convertBoolean(false)} 
+                    AND s.created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
+                    AND s.error_message IS NOT NULL
+                    AND ak.user_id = ?
+                GROUP BY s.error_message
                 ORDER BY count DESC
                 LIMIT 10
-            `)
+            `, [authResult.user!.id])
         ])
 
         return NextResponse.json({

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/db/init'
-import dbManager from '@/lib/db'
-import { authenticateAdmin } from '@/lib/auth/middleware'
+import universalDb from '@/lib/db/universal'
+import { authenticateJWT } from '@/lib/auth/middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
     try {
         await initializeDatabase()
         
-        // Authenticate admin user
-        const authResult = await authenticateAdmin(request)
+        // Authenticate user
+        const authResult = await authenticateJWT(request)
         if (!authResult.success) {
             return NextResponse.json(authResult, { status: 401 })
         }
@@ -18,18 +18,20 @@ export async function GET(request: NextRequest) {
         const { searchParams } = request.nextUrl
         const days = parseInt(searchParams.get('days') || '30')
 
-        const chartData = await dbManager.all(`
+        const chartData = await universalDb.all(`
             SELECT 
-                DATE(created_at) as date,
+                DATE(s.created_at) as date,
                 COUNT(*) as requests,
-                SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful,
-                SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed,
-                AVG(CASE WHEN success = 1 THEN processing_time END) as avg_processing_time
-            FROM screenshots 
-            WHERE created_at >= datetime('now', '-${days} days')
-            GROUP BY DATE(created_at)
+                SUM(CASE WHEN s.success = ${universalDb.queryBuilder.convertBoolean(true)} THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN s.success = ${universalDb.queryBuilder.convertBoolean(false)} THEN 1 ELSE 0 END) as failed,
+                AVG(CASE WHEN s.success = ${universalDb.queryBuilder.convertBoolean(true)} THEN s.processing_time END) as avg_processing_time
+            FROM screenshots s
+            JOIN api_keys ak ON s.api_key_id = ak.id
+            WHERE s.created_at >= ${universalDb.queryBuilder.getNowFunction()} - INTERVAL '${days} days'
+                AND ak.user_id = ?
+            GROUP BY DATE(s.created_at)
             ORDER BY date ASC
-        `)
+        `, [authResult.user!.id])
 
         return NextResponse.json({
             success: true,

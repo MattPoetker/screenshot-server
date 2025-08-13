@@ -27,6 +27,14 @@ export async function POST(request: NextRequest) {
             }, { status: 401 })
         }
 
+        // Check if email is verified
+        if (!user.email_verified) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'Please verify your email before logging in' 
+            }, { status: 401 })
+        }
+
         const token = jwt.sign(
             {
                 userId: user.id,
@@ -53,6 +61,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
     try {
+        await initializeDatabase()
+        
         const authHeader = request.headers.get('authorization')
         const token = authHeader?.split(' ')[1]
 
@@ -78,6 +88,7 @@ export async function GET(request: NextRequest) {
             user: user.toJSON()
         })
     } catch (error) {
+        console.error('Token verification error:', error)
         return NextResponse.json({ 
             success: false,
             error: 'Invalid token' 

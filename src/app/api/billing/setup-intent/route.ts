@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe/client'
 import { authenticateJWT } from '@/lib/auth/middleware'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       customerId = customer.id
 
       // Save customer ID to database
-      await dbManager.run(
+      await universalDb.run(
         'UPDATE users SET stripe_customer_id = ? WHERE id = ?',
         [customerId, user.id]
       )

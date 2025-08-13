@@ -1,5 +1,5 @@
 import { stripe, getPlanConfig, PlanType } from './client'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 
 export interface CreateCustomerParams {
   email: string
@@ -16,6 +16,9 @@ export interface CreateSubscriptionParams {
 
 export async function createStripeCustomer({ email, name, userId }: CreateCustomerParams) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe client not initialized')
+    }
     const customer = await stripe.customers.create({
       email,
       name,
@@ -25,8 +28,8 @@ export async function createStripeCustomer({ email, name, userId }: CreateCustom
     })
 
     // Update user with Stripe customer ID
-    await dbManager.run(
-      'UPDATE users SET stripe_customer_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    await universalDb.run(
+      `UPDATE users SET stripe_customer_id = ?, updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE id = ?`,
       [customer.id, userId]
     )
 
@@ -39,6 +42,9 @@ export async function createStripeCustomer({ email, name, userId }: CreateCustom
 
 export async function createSubscription({ customerId, priceId, userId, planType }: CreateSubscriptionParams) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe client not initialized')
+    }
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
@@ -71,19 +77,27 @@ export async function saveSubscriptionToDatabase(
       ? subscription.customer 
       : subscription.customer.id
 
-    await dbManager.run(`
-      INSERT OR REPLACE INTO subscriptions (
+    // Use UPSERT syntax that works for both SQLite and PostgreSQL
+    await universalDb.run(`
+      INSERT INTO subscriptions (
         user_id,
         stripe_customer_id,
         stripe_subscription_id,
-        plan_type,
+        plan_id,
         status,
         current_period_start,
         current_period_end,
         cancel_at_period_end,
-        trial_end,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${universalDb.queryBuilder.getCurrentTimestamp()})
+      ON CONFLICT (stripe_subscription_id) DO UPDATE SET
+        stripe_customer_id = excluded.stripe_customer_id,
+        plan_id = excluded.plan_id,
+        status = excluded.status,
+        current_period_start = excluded.current_period_start,
+        current_period_end = excluded.current_period_end,
+        cancel_at_period_end = excluded.cancel_at_period_end,
+        updated_at = excluded.updated_at
     `, [
       userId,
       customerId,
@@ -92,8 +106,7 @@ export async function saveSubscriptionToDatabase(
       subscription.status,
       new Date(subscription.current_period_start * 1000).toISOString(),
       new Date(subscription.current_period_end * 1000).toISOString(),
-      subscription.cancel_at_period_end ? 1 : 0,
-      subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+      universalDb.queryBuilder.convertBoolean(subscription.cancel_at_period_end),
     ])
 
     // No billing cycle needed - usage calculated directly from screenshots
@@ -107,7 +120,7 @@ export async function saveSubscriptionToDatabase(
 
 export async function getUserSubscription(userId: number) {
   try {
-    return await dbManager.get(`
+    return await universalDb.get(`
       SELECT * FROM subscriptions 
       WHERE user_id = ? 
       AND status IN ('active', 'trialing', 'past_due')
@@ -122,14 +135,17 @@ export async function getUserSubscription(userId: number) {
 
 export async function cancelSubscription(subscriptionId: string, cancelAtPeriodEnd: boolean = true) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe client not initialized')
+    }
     const subscription = await stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: cancelAtPeriodEnd,
     })
 
     // Update database
-    await dbManager.run(
-      'UPDATE subscriptions SET cancel_at_period_end = ?, updated_at = CURRENT_TIMESTAMP WHERE stripe_subscription_id = ?',
-      [cancelAtPeriodEnd ? 1 : 0, subscriptionId]
+    await universalDb.run(
+      `UPDATE subscriptions SET cancel_at_period_end = ?, updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE stripe_subscription_id = ?`,
+      [universalDb.queryBuilder.convertBoolean(cancelAtPeriodEnd), subscriptionId]
     )
 
     return subscription
@@ -141,13 +157,16 @@ export async function cancelSubscription(subscriptionId: string, cancelAtPeriodE
 
 export async function reactivateSubscription(subscriptionId: string) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe client not initialized')
+    }
     const subscription = await stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: false,
     })
 
     // Update database
-    await dbManager.run(
-      'UPDATE subscriptions SET cancel_at_period_end = 0, updated_at = CURRENT_TIMESTAMP WHERE stripe_subscription_id = ?',
+    await universalDb.run(
+      `UPDATE subscriptions SET cancel_at_period_end = ${universalDb.queryBuilder.convertBoolean(false)}, updated_at = ${universalDb.queryBuilder.getCurrentTimestamp()} WHERE stripe_subscription_id = ?`,
       [subscriptionId]
     )
 

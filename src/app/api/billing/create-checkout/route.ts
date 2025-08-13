@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe, getPlanConfig, PlanType } from '@/lib/stripe/client'
 import { authenticateAdmin } from '@/lib/auth/middleware'
 import { createStripeCustomer } from '@/lib/stripe/subscriptions'
-import dbManager from '@/lib/db'
+import universalDb from '@/lib/db/universal'
 
 export async function POST(request: NextRequest) {
   try {
