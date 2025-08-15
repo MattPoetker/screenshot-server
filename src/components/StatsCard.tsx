@@ -26,7 +26,7 @@ export default function StatsCard({
   loading = false 
 }: StatsCardProps) {
   return (
-    <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/50 hover:border-slate-300/50 transition-all duration-200 hover:shadow-lg hover:bg-white/80">
+    <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/50 dark:border-slate-700/50 hover:border-slate-300/50 dark:hover:border-slate-600/50 transition-all duration-200 hover:shadow-lg hover:bg-white/80 dark:hover:bg-slate-800/80">
       <div className="flex items-start justify-between">
         <div className={`w-12 h-12 ${iconBgColor} ${iconColor} rounded-xl flex items-center justify-center flex-shrink-0`}>
           <Icon className="w-6 h-6" />
@@ -34,10 +34,10 @@ export default function StatsCard({
       </div>
       
       <div className="mt-4">
-        <h3 className="text-sm font-medium text-slate-600 mb-1">{title}</h3>
-        <div className="text-2xl font-bold text-slate-900 mb-2">
+        <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">{title}</h3>
+        <div className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
           {loading ? (
-            <div className="w-16 h-8 bg-slate-200 animate-pulse rounded"></div>
+            <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
           ) : (
             value
           )}

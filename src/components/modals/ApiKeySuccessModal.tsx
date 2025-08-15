@@ -214,7 +214,7 @@ ${apiKey.expires_at ? `Expires: ${new Date(apiKey.expires_at).toLocaleString()}`
           </label>
           <div className="p-3 bg-slate-900 rounded-lg border">
             <code className="text-sm text-green-400 font-mono block">
-              curl -X POST http://localhost:3002/api/screenshot \<br/>
+              curl -X POST https://nice-shot.io/api/screenshot \<br/>
               &nbsp;&nbsp;-H "Authorization: Bearer {apiKey.raw_key}" \<br/>
               &nbsp;&nbsp;-H "Content-Type: application/json" \<br/>
               &nbsp;&nbsp;-d '{`{"url": "https://example.com"}`}'

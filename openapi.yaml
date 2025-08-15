@@ -13,10 +13,10 @@ info:
   contact:
     name: Screenshot API Support
 servers:
+  - url: https://nice-shot.io/api
+    description: Production server
   - url: http://localhost:3000
     description: Development server
-  - url: https://your-production-domain.com
-    description: Production server
 
 security:
   - BearerAuth: []
@@ -152,7 +152,7 @@ paths:
                   summary: Successful screenshot
                   value:
                     image: "thumbnail-1640995200000.png"
-                    url: "https://images.sitelaunch.io/images/thumbnail-1640995200000.png"
+                    url: "https://images.nice-shot.io/images/thumbnail-1640995200000.png"
                     metadata:
                       width: 1366
                       height: 768
@@ -462,7 +462,7 @@ components:
           type: string
           format: uri
           description: Full URL to access the generated image
-          example: "https://images.sitelaunch.io/images/thumbnail-1640995200000.png"
+          example: "https://images.nice-shot.io/images/thumbnail-1640995200000.png"
         metadata:
           type: object
           description: Screenshot metadata and processing information

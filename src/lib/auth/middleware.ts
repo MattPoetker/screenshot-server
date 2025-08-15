@@ -21,25 +21,35 @@ export interface ApiKeyAuthResult {
 
 export async function authenticateJWT(request: NextRequest): Promise<AuthResult> {
     try {
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: Authenticating JWT request`)
         // Ensure database is initialized
         await initializeDatabase()
         
         const authHeader = request.headers.get('authorization')
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: Auth header:`, authHeader ? `Bearer ${authHeader.split(' ')[1]?.substring(0, 20)}...` : 'missing')
         const token = authHeader?.split(' ')[1]
 
         if (!token) {
+            console.log(`[${new Date().toISOString()}] AuthMiddleware: No token provided`)
             return { success: false, error: 'No token provided' }
         }
 
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: Verifying token: ${token.substring(0, 20)}...`)
         const decoded = jwt.verify(token, JWT_SECRET) as any
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: Token decoded, userId: ${decoded.userId}`)
+        
         const user = await User.findById(decoded.userId)
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: User lookup result:`, user ? `found user ${user.username}` : 'user not found')
 
         if (!user || !user.is_active) {
+            console.log(`[${new Date().toISOString()}] AuthMiddleware: User not found or inactive`)
             return { success: false, error: 'User not found or inactive' }
         }
 
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: Authentication successful for user: ${user.username}`)
         return { success: true, user }
     } catch (error) {
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: JWT verification failed:`, error)
         return { success: false, error: 'Invalid token' }
     }
 }
@@ -118,18 +128,24 @@ export interface LoginResult {
 
 export async function login(username: string, password: string): Promise<LoginResult> {
     try {
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: Login attempt for username: ${username}`)
         const user = await User.authenticate(username, password)
         
         if (!user) {
+            console.log(`[${new Date().toISOString()}] AuthMiddleware: Authentication failed for username: ${username}`)
             return { success: false, error: 'Invalid credentials' }
         }
 
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: User authenticated: ${user.username}, email_verified: ${user.email_verified}`)
+
         // Check if email is verified
         if (!user.email_verified) {
+            console.log(`[${new Date().toISOString()}] AuthMiddleware: Email not verified for user: ${username}`)
             return { success: false, error: 'Please verify your email before logging in' }
         }
 
         const token = generateToken(user)
+        console.log(`[${new Date().toISOString()}] AuthMiddleware: Token generated for user: ${user.username}, token: ${token.substring(0, 20)}...`)
         
         return {
             success: true,
@@ -141,7 +157,7 @@ export async function login(username: string, password: string): Promise<LoginRe
             }
         }
     } catch (error) {
-        console.error('Login error:', error)
+        console.error(`[${new Date().toISOString()}] AuthMiddleware: Login error:`, error)
         return { success: false, error: 'Login failed' }
     }
 }

@@ -29,7 +29,7 @@ const pricingTiers = [
       'PNG and JPEG formats',
       'Standard resolution up to 1920x1080',
       'Email support',
-      '30-day screenshot retention'
+      'Indefinite screenshot retention'
     ],
     limitations: [
       'No GIF animations',
@@ -53,7 +53,7 @@ const pricingTiers = [
       'Batch processing up to 10 URLs',
       'Webhook notifications',
       'Priority email support',
-      '90-day screenshot retention',
+      'Indefinite screenshot retention',
       'Basic analytics dashboard'
     ],
     limitations: [
@@ -75,7 +75,7 @@ const pricingTiers = [
       'Custom integrations',
       'Dedicated support manager',
       'SLA guarantees (99.9% uptime)',
-      '1-year screenshot retention',
+      'Indefinite screenshot retention',
       'Advanced analytics & reporting',
       'White-label options available',
       'Unlimited concurrent requests',
@@ -120,7 +120,7 @@ const faqs = [
   },
   {
     question: 'How long are screenshots stored?',
-    answer: 'Screenshot retention varies by plan: Free (30 days), Pro (90 days), Enterprise (1 year). You can also download and store screenshots on your own infrastructure.'
+    answer: 'All screenshots are stored indefinitely across all plans. You can access your screenshots anytime without worrying about expiration dates.'
   }
 ]
 

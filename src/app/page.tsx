@@ -16,7 +16,6 @@ import {
   FileImage,
   Sparkles,
   ChevronRight,
-  Github,
   CheckCircle,
   ArrowRight,
   BarChart3,
@@ -40,7 +39,7 @@ export default function HomePage() {
 
   const copyToClipboard = () => {
     const codeText = `# Capture a screenshot with a simple POST request
-curl -X POST https://api.screenshot.io/capture \\\\
+curl -X POST https://nice-shot.io/api/screenshot \\\\
   -H "Authorization: Bearer YOUR_API_KEY" \\\\
   -H "Content-Type: application/json" \\\\
   -d '{
@@ -89,10 +88,6 @@ curl -X POST https://api.screenshot.io/capture \\\\
             <Link href="/pricing" className="text-slate-300 hover:text-white px-4 py-2 rounded hover:bg-slate-700 md:hover:bg-transparent transition-colors">
               Pricing
             </Link>
-            <Link href="https://github.com" className="text-slate-300 hover:text-white px-4 py-2 rounded hover:bg-slate-700 md:hover:bg-transparent transition-colors flex items-center gap-2">
-              <Github className="w-4 h-4" />
-              GitHub
-            </Link>
             <Link href="/login" className="px-6 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-semibold">
               Dashboard
             </Link>
@@ -119,8 +114,8 @@ curl -X POST https://api.screenshot.io/capture \\\\
           transition={{ duration: 0.6, delay: 0.1 }}
           className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-8 relative z-10"
         >
-          Professional screenshot and website capture API with advanced features. 
-          Perfect for documentation, testing, and monitoring.
+          Professional thumbnail and website capture API with advanced features. 
+          Perfect for social media previews, content generation, and automated testing.
         </motion.h2>
         
         {/* Feature badges with glassmorphism */}
@@ -151,12 +146,10 @@ curl -X POST https://api.screenshot.io/capture \\\\
           transition={{ duration: 0.6, delay: 0.3 }}
           className="flex flex-col sm:flex-row gap-4 justify-center relative z-10"
         >
-          <Link href="/login" className="relative px-8 py-4 rounded-lg font-semibold overflow-hidden group">
-            <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-75 group-hover:opacity-100 blur-lg transition-opacity" />
-            <span className="relative bg-indigo-600 px-8 py-4 rounded-lg flex items-center justify-center gap-2 text-white group-hover:bg-indigo-700 transition-colors">
-              Get Started Free
-              <ArrowRight className="w-4 h-4" />
-            </span>
+          <Link href="/login" className="relative inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg font-semibold overflow-hidden group bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+            <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-20 blur-lg transition-opacity" />
+            <span className="relative">Get Started Free</span>
+            <ArrowRight className="w-4 h-4 relative" />
           </Link>
           <Link href="#features" className="px-8 py-4 bg-slate-800/80 backdrop-blur-sm text-white rounded-lg hover:bg-slate-700 transition-all hover:scale-105 font-semibold flex items-center justify-center gap-2 border border-slate-700">
             View Features
@@ -224,7 +217,7 @@ curl -X POST https://api.screenshot.io/capture \\\\
           </div>
           <pre className="text-sm text-slate-300 overflow-x-auto">
             <code>{`# Capture a screenshot with a simple POST request
-curl -X POST `}<span className="text-emerald-400">https://api.screenshot.io/capture</span>{` \\
+curl -X POST `}<span className="text-emerald-400">https://nice-shot.io/api/screenshot</span>{` \\
   -H `}<span className="text-pink-400">"Authorization: Bearer YOUR_API_KEY"</span>{` \\
   -H `}<span className="text-pink-400">"Content-Type: application/json"</span>{` \\
   -d '{
@@ -237,7 +230,7 @@ curl -X POST `}<span className="text-emerald-400">https://api.screenshot.io/capt
 # Response
 {
   `}<span className="text-cyan-400">"image"</span>{`: "screenshot-123456.png",
-  `}<span className="text-cyan-400">"url"</span>{`: "https://images.sitelaunch.io/images/screenshot-123456.png",
+  `}<span className="text-cyan-400">"url"</span>{`: "https://images.nice-shot.io/images/screenshot-123456.png",
   `}<span className="text-cyan-400">"metadata"</span>{`: {
     "width": 1920,
     "height": 1080,
@@ -414,6 +407,28 @@ curl -X POST `}<span className="text-emerald-400">https://api.screenshot.io/capt
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="bg-slate-900/30 rounded-xl p-8 border border-slate-800">
+            <FileImage className="w-10 h-10 text-purple-500 mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-3">Thumbnail Generation</h3>
+            <p className="text-slate-400 mb-4">
+              Generate perfect thumbnails and social media previews for websites, blogs, and applications. All thumbnails stored indefinitely.
+            </p>
+            <ul className="space-y-2">
+              <li className="flex items-center gap-2 text-sm text-slate-300">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Social media cards
+              </li>
+              <li className="flex items-center gap-2 text-sm text-slate-300">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Website previews
+              </li>
+              <li className="flex items-center gap-2 text-sm text-slate-300">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Permanent storage
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-slate-900/30 rounded-xl p-8 border border-slate-800">
             <BarChart3 className="w-10 h-10 text-indigo-500 mb-4" />
             <h3 className="text-xl font-semibold text-white mb-3">Website Monitoring</h3>
             <p className="text-slate-400 mb-4">
@@ -431,28 +446,6 @@ curl -X POST `}<span className="text-emerald-400">https://api.screenshot.io/capt
               <li className="flex items-center gap-2 text-sm text-slate-300">
                 <CheckCircle className="w-4 h-4 text-green-500" />
                 Alert notifications
-              </li>
-            </ul>
-          </div>
-
-          <div className="bg-slate-900/30 rounded-xl p-8 border border-slate-800">
-            <FileImage className="w-10 h-10 text-purple-500 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-3">Content Generation</h3>
-            <p className="text-slate-400 mb-4">
-              Generate social media previews, PDF reports, and documentation screenshots programmatically.
-            </p>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2 text-sm text-slate-300">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                Social card generation
-              </li>
-              <li className="flex items-center gap-2 text-sm text-slate-300">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                PDF conversion
-              </li>
-              <li className="flex items-center gap-2 text-sm text-slate-300">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                Batch processing
               </li>
             </ul>
           </div>
@@ -532,12 +525,10 @@ curl -X POST `}<span className="text-emerald-400">https://api.screenshot.io/capt
             transition={{ duration: 0.6, delay: 0.2 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Link href="/login" className="relative px-8 py-4 rounded-lg font-semibold overflow-hidden group">
-              <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-75 group-hover:opacity-100 blur-lg transition-opacity animate-pulse" />
-              <span className="relative bg-indigo-600 px-8 py-4 rounded-lg flex items-center justify-center gap-2 text-white group-hover:bg-indigo-700 transition-colors">
-                Start Free Trial
-                <ArrowRight className="w-4 h-4" />
-              </span>
+            <Link href="/login" className="relative inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg font-semibold overflow-hidden group bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+              <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-20 blur-lg transition-opacity animate-pulse" />
+              <span className="relative">Start Free Trial</span>
+              <ArrowRight className="w-4 h-4 relative" />
             </Link>
             <Link href="/docs" className="px-8 py-4 bg-slate-800/80 backdrop-blur-sm text-white rounded-lg hover:bg-slate-700 transition-all hover:scale-105 font-semibold border border-slate-700">
               Read Documentation
@@ -608,9 +599,6 @@ curl -X POST `}<span className="text-emerald-400">https://api.screenshot.io/capt
               <div className="flex gap-4 mt-4 md:mt-0">
                 <Link href="https://twitter.com" className="text-slate-400 hover:text-indigo-400 transition-colors">
                   <Twitter className="w-5 h-5" />
-                </Link>
-                <Link href="https://github.com" className="text-slate-400 hover:text-indigo-400 transition-colors">
-                  <Github className="w-5 h-5" />
                 </Link>
                 <Link href="https://linkedin.com" className="text-slate-400 hover:text-indigo-400 transition-colors">
                   <Linkedin className="w-5 h-5" />

@@ -80,14 +80,14 @@ function DashboardContent() {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">API Dashboard</h2>
-          <p className="text-slate-600 font-medium">Monitor your screenshot API usage and performance</p>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">API Dashboard</h2>
+          <p className="text-slate-600 dark:text-slate-400 font-medium">Monitor your screenshot API usage and performance</p>
         </div>
         
         <div className="flex gap-3">
           <button 
             onClick={() => router.push('/api-keys')}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-300 transition-colors"
           >
             <Key className="w-4 h-4" />
             Manage Keys
