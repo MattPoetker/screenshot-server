@@ -80,10 +80,10 @@ export class Screenshot implements ScreenshotType {
             screenshotData.file_size || null,
             screenshotData.width || null,
             screenshotData.height || null,
-            screenshotData.device_type || 'desktop',
+            'desktop',
             screenshotData.format || 'png',
-            universalDb.queryBuilder.convertBoolean(screenshotData.full_page || false),
-            screenshotData.wait_time || 0,
+            universalDb.queryBuilder.convertBoolean(false),
+            0,
             screenshotData.storage_provider || 'local',
             screenshotData.storage_url || null,
             screenshotData.cdn_url || null,
@@ -236,7 +236,7 @@ export class Screenshot implements ScreenshotType {
 
     static async delete(id: number): Promise<boolean> {
         const result = await universalDb.run('DELETE FROM screenshots WHERE id = ?', [id])
-        return result.changes > 0
+        return (result.changes || 0) > 0
     }
 
     async update(updates: Partial<ScreenshotType>): Promise<void> {

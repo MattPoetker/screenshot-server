@@ -1,7 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
+import CountUp from 'react-countup'
 import { 
   Camera, 
   Zap, 
@@ -20,16 +22,47 @@ import {
   BarChart3,
   Clock,
   Cloud,
-  Terminal
+  Terminal,
+  Copy,
+  Check,
+  Twitter,
+  Linkedin
 } from 'lucide-react'
 
 export default function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    setIsVisible(true)
+  }, [])
+
+  const copyToClipboard = () => {
+    const codeText = `# Capture a screenshot with a simple POST request
+curl -X POST https://api.screenshot.io/capture \\\\
+  -H "Authorization: Bearer YOUR_API_KEY" \\\\
+  -H "Content-Type: application/json" \\\\
+  -d '{
+    "url": "https://example.com",
+    "format": "png",
+    "width": 1920,
+    "height": 1080
+  }'`
+    navigator.clipboard.writeText(codeText)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 relative">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-pink-500/10 animate-gradient-shift" />
+      </div>
+
       {/* Navigation */}
-      <nav className="relative px-4 py-6">
+      <nav className="relative px-4 py-6 z-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Camera className="w-8 h-8 text-indigo-500" />
@@ -68,88 +101,144 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <div className="text-center pt-12 md:pt-24 px-4">
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6">
+      <div className="relative overflow-hidden pt-12 md:pt-24 px-4 text-center">
+        {/* Spotlight gradient */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.3),transparent_50%)]" />
+        
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+          transition={{ duration: 0.6 }}
+          className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6 relative z-10"
+        >
           Screenshots as a Service<span className="text-indigo-500">.</span>
-        </h1>
-        <h2 className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-8">
+        </motion.h1>
+        <motion.h2 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-8 relative z-10"
+        >
           Professional screenshot and website capture API with advanced features. 
           Perfect for documentation, testing, and monitoring.
-        </h2>
+        </motion.h2>
         
-        {/* Feature badges */}
-        <div className="flex flex-wrap gap-3 justify-center mb-8">
-          <div className="flex items-center gap-2 text-sm text-slate-300">
+        {/* Feature badges with glassmorphism */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="flex flex-wrap gap-3 justify-center mb-8 relative z-10"
+        >
+          <div className="flex items-center gap-2 text-sm text-slate-300 px-4 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10">
             <Zap className="w-4 h-4 text-yellow-500" />
             Lightning Fast
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-300">
+          <div className="flex items-center gap-2 text-sm text-slate-300 px-4 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10">
             <Shield className="w-4 h-4 text-green-500" />
             Secure & Reliable
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-300">
+          <div className="flex items-center gap-2 text-sm text-slate-300 px-4 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10">
             <Globe className="w-4 h-4 text-blue-500" />
             Global CDN
           </div>
-        </div>
+        </motion.div>
         
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/login" className="px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold flex items-center justify-center gap-2">
-            Get Started Free
-            <ArrowRight className="w-4 h-4" />
+        {/* CTA Buttons with glow effect */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="flex flex-col sm:flex-row gap-4 justify-center relative z-10"
+        >
+          <Link href="/login" className="relative px-8 py-4 rounded-lg font-semibold overflow-hidden group">
+            <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-75 group-hover:opacity-100 blur-lg transition-opacity" />
+            <span className="relative bg-indigo-600 px-8 py-4 rounded-lg flex items-center justify-center gap-2 text-white group-hover:bg-indigo-700 transition-colors">
+              Get Started Free
+              <ArrowRight className="w-4 h-4" />
+            </span>
           </Link>
-          <Link href="#features" className="px-8 py-4 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors font-semibold flex items-center justify-center gap-2">
+          <Link href="#features" className="px-8 py-4 bg-slate-800/80 backdrop-blur-sm text-white rounded-lg hover:bg-slate-700 transition-all hover:scale-105 font-semibold flex items-center justify-center gap-2 border border-slate-700">
             View Features
             <ChevronRight className="w-4 h-4" />
           </Link>
-        </div>
+        </motion.div>
 
-        {/* Stats */}
-        <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-white">10M+</div>
-            <div className="text-sm text-slate-400">Screenshots Captured</div>
+        {/* Stats with count-up animation */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto relative z-10"
+        >
+          <div className="text-center group hover:scale-110 transition-transform">
+            <div className="text-3xl font-bold text-white bg-gradient-to-br from-white/10 to-transparent backdrop-blur-sm rounded-lg p-4 border border-white/5">
+              {isVisible && <CountUp end={10} duration={2} suffix="M+" />}
+            </div>
+            <div className="text-sm text-slate-400 mt-2">Screenshots Captured</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-white">99.9%</div>
-            <div className="text-sm text-slate-400">Uptime SLA</div>
+          <div className="text-center group hover:scale-110 transition-transform">
+            <div className="text-3xl font-bold text-white bg-gradient-to-br from-white/10 to-transparent backdrop-blur-sm rounded-lg p-4 border border-white/5">
+              {isVisible && <CountUp end={99.9} duration={2} decimals={1} suffix="%" />}
+            </div>
+            <div className="text-sm text-slate-400 mt-2">Uptime SLA</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-white">&lt;2s</div>
-            <div className="text-sm text-slate-400">Average Response</div>
+          <div className="text-center group hover:scale-110 transition-transform">
+            <div className="text-3xl font-bold text-white bg-gradient-to-br from-white/10 to-transparent backdrop-blur-sm rounded-lg p-4 border border-white/5">
+              &lt;2s
+            </div>
+            <div className="text-sm text-slate-400 mt-2">Average Response</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-white">50+</div>
-            <div className="text-sm text-slate-400">Global Regions</div>
+          <div className="text-center group hover:scale-110 transition-transform">
+            <div className="text-3xl font-bold text-white bg-gradient-to-br from-white/10 to-transparent backdrop-blur-sm rounded-lg p-4 border border-white/5">
+              {isVisible && <CountUp end={50} duration={2} suffix="+" />}
+            </div>
+            <div className="text-sm text-slate-400 mt-2">Global Regions</div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* Code Example */}
-      <div className="mt-24 max-w-4xl mx-auto px-4">
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Terminal className="w-5 h-5 text-slate-400" />
-            <span className="text-sm text-slate-400">Quick Start</span>
+      {/* Code Example with copy button */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+        transition={{ duration: 0.6, delay: 0.5 }}
+        className="mt-24 max-w-4xl mx-auto px-4 relative z-10"
+      >
+        <div className="bg-slate-900/80 backdrop-blur-md rounded-xl border border-slate-800 p-6 relative group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Terminal className="w-5 h-5 text-slate-400" />
+              <span className="text-sm text-slate-400">Quick Start</span>
+            </div>
+            <button
+              onClick={copyToClipboard}
+              className="flex items-center gap-2 px-3 py-1 rounded-md bg-slate-800 hover:bg-slate-700 transition-colors text-slate-400 hover:text-white"
+            >
+              {copied ? (
+                <><Check className="w-4 h-4" /> Copied!</>
+              ) : (
+                <><Copy className="w-4 h-4" /> Copy</>
+              )}
+            </button>
           </div>
           <pre className="text-sm text-slate-300 overflow-x-auto">
             <code>{`# Capture a screenshot with a simple POST request
-curl -X POST https://api.screenshot.io/capture \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
+curl -X POST `}<span className="text-emerald-400">https://api.screenshot.io/capture</span>{` \\
+  -H `}<span className="text-pink-400">"Authorization: Bearer YOUR_API_KEY"</span>{` \\
+  -H `}<span className="text-pink-400">"Content-Type: application/json"</span>{` \\
   -d '{
-    "url": "https://example.com",
-    "format": "png",
-    "width": 1920,
-    "height": 1080
+    `}<span className="text-cyan-400">"url"</span>{`: "https://example.com",
+    `}<span className="text-cyan-400">"format"</span>{`: "png",
+    `}<span className="text-cyan-400">"width"</span>{`: 1920,
+    `}<span className="text-cyan-400">"height"</span>{`: 1080
   }'
 
 # Response
 {
-  "image": "screenshot-123456.png",
-  "url": "https://images.sitelaunch.io/images/screenshot-123456.png",
-  "metadata": {
+  `}<span className="text-cyan-400">"image"</span>{`: "screenshot-123456.png",
+  `}<span className="text-cyan-400">"url"</span>{`: "https://images.sitelaunch.io/images/screenshot-123456.png",
+  `}<span className="text-cyan-400">"metadata"</span>{`: {
     "width": 1920,
     "height": 1080,
     "format": "png",
@@ -158,7 +247,10 @@ curl -X POST https://api.screenshot.io/capture \\
 }`}</code>
           </pre>
         </div>
-      </div>
+      </motion.div>
+
+      {/* Section Divider */}
+      <div className="h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent my-16" />
 
       {/* Features Section */}
       <div id="features" className="mt-32 max-w-7xl mx-auto px-4">
@@ -173,72 +265,93 @@ curl -X POST https://api.screenshot.io/capture \\
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Feature 1 */}
-          <div className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors">
-            <div className="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-4">
-              <Camera className="w-6 h-6 text-indigo-500" />
+          <motion.div 
+            whileHover={{ scale: 1.05, y: -5 }}
+            className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 transition-all hover:shadow-xl hover:shadow-indigo-500/20 group"
+          >
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-tr from-indigo-500 to-purple-500 animate-pulse-slow mb-4">
+              <Camera className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Full Page Capture</h3>
             <p className="text-slate-400 text-sm">
               Capture entire web pages, including content below the fold, with automatic scrolling and stitching.
             </p>
-          </div>
+          </motion.div>
 
           {/* Feature 2 */}
-          <div className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors">
-            <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center mb-4">
-              <FileImage className="w-6 h-6 text-green-500" />
+          <motion.div 
+            whileHover={{ scale: 1.05, y: -5 }}
+            className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-green-500/50 transition-all hover:shadow-xl hover:shadow-green-500/20 group"
+          >
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-tr from-green-500 to-emerald-500 animate-pulse-slow mb-4">
+              <FileImage className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Multiple Formats</h3>
             <p className="text-slate-400 text-sm">
               Export in PNG, JPEG, WebP, or animated GIF formats with customizable quality and compression.
             </p>
-          </div>
+          </motion.div>
 
           {/* Feature 3 */}
-          <div className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors">
-            <div className="w-12 h-12 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-4">
-              <Gauge className="w-6 h-6 text-yellow-500" />
+          <motion.div 
+            whileHover={{ scale: 1.05, y: -5 }}
+            className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-yellow-500/50 transition-all hover:shadow-xl hover:shadow-yellow-500/20 group"
+          >
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-tr from-yellow-500 to-orange-500 animate-pulse-slow mb-4">
+              <Gauge className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Lightning Fast</h3>
             <p className="text-slate-400 text-sm">
               Optimized rendering engine with intelligent caching delivers screenshots in seconds.
             </p>
-          </div>
+          </motion.div>
 
           {/* Feature 4 */}
-          <div className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors">
-            <div className="w-12 h-12 bg-purple-500/10 rounded-lg flex items-center justify-center mb-4">
-              <Code className="w-6 h-6 text-purple-500" />
+          <motion.div 
+            whileHover={{ scale: 1.05, y: -5 }}
+            className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-purple-500/50 transition-all hover:shadow-xl hover:shadow-purple-500/20 group"
+          >
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-tr from-purple-500 to-pink-500 animate-pulse-slow mb-4">
+              <Code className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Developer Friendly</h3>
             <p className="text-slate-400 text-sm">
               RESTful API with comprehensive documentation, SDKs for popular languages, and webhook support.
             </p>
-          </div>
+          </motion.div>
 
           {/* Feature 5 */}
-          <div className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors">
-            <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mb-4">
-              <Globe className="w-6 h-6 text-blue-500" />
+          <motion.div 
+            whileHover={{ scale: 1.05, y: -5 }}
+            className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-blue-500/50 transition-all hover:shadow-xl hover:shadow-blue-500/20 group"
+          >
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-tr from-blue-500 to-cyan-500 animate-pulse-slow mb-4">
+              <Globe className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Global CDN</h3>
             <p className="text-slate-400 text-sm">
               Screenshots delivered through a global CDN network for blazing fast access worldwide.
             </p>
-          </div>
+          </motion.div>
 
           {/* Feature 6 */}
-          <div className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors">
-            <div className="w-12 h-12 bg-red-500/10 rounded-lg flex items-center justify-center mb-4">
-              <Lock className="w-6 h-6 text-red-500" />
+          <motion.div 
+            whileHover={{ scale: 1.05, y: -5 }}
+            className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-xl p-6 hover:border-red-500/50 transition-all hover:shadow-xl hover:shadow-red-500/20 group"
+          >
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-tr from-red-500 to-rose-500 animate-pulse-slow mb-4">
+              <Lock className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Secure & Private</h3>
             <p className="text-slate-400 text-sm">
               Enterprise-grade security with encrypted connections, API key authentication, and rate limiting.
             </p>
-          </div>
+          </motion.div>
         </div>
       </div>
+
+      {/* Section Divider */}
+      <div className="h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent my-16" />
 
       {/* Advanced Features */}
       <div className="mt-32 max-w-7xl mx-auto px-4">
@@ -284,6 +397,9 @@ curl -X POST https://api.screenshot.io/capture \\
           </div>
         </div>
       </div>
+
+      {/* Section Divider */}
+      <div className="h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent my-16" />
 
       {/* Use Cases */}
       <div className="mt-32 max-w-7xl mx-auto px-4">
@@ -387,33 +503,60 @@ curl -X POST https://api.screenshot.io/capture \\
         </div>
       </div>
 
+      {/* Section Divider */}
+      <div className="h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent my-16" />
+
       {/* CTA Section */}
-      <div className="mt-32 px-4 pb-24">
+      <div className="mt-32 px-4 pb-24 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-3xl md:text-4xl font-bold text-white mb-6"
+          >
             Ready to Get Started?
-          </h2>
-          <p className="text-slate-400 text-lg mb-8 max-w-2xl mx-auto">
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-slate-400 text-lg mb-8 max-w-2xl mx-auto"
+          >
             Join thousands of developers using our API to capture perfect screenshots. 
             Start free with 500 screenshots per month.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login" className="px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold flex items-center justify-center gap-2">
-              Start Free Trial
-              <ArrowRight className="w-4 h-4" />
+          </motion.p>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
+            <Link href="/login" className="relative px-8 py-4 rounded-lg font-semibold overflow-hidden group">
+              <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-75 group-hover:opacity-100 blur-lg transition-opacity animate-pulse" />
+              <span className="relative bg-indigo-600 px-8 py-4 rounded-lg flex items-center justify-center gap-2 text-white group-hover:bg-indigo-700 transition-colors">
+                Start Free Trial
+                <ArrowRight className="w-4 h-4" />
+              </span>
             </Link>
-            <Link href="/docs" className="px-8 py-4 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors font-semibold">
+            <Link href="/docs" className="px-8 py-4 bg-slate-800/80 backdrop-blur-sm text-white rounded-lg hover:bg-slate-700 transition-all hover:scale-105 font-semibold border border-slate-700">
               Read Documentation
             </Link>
-          </div>
-          <p className="text-sm text-slate-500 mt-6">
+          </motion.div>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="text-sm text-slate-500 mt-6"
+          >
             No credit card required • Free tier available • Cancel anytime
-          </p>
+          </motion.p>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800 px-4 py-12">
+      {/* Footer with gradient */}
+      <footer className="relative border-t border-slate-800 px-4 py-12">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
@@ -457,10 +600,23 @@ curl -X POST https://api.screenshot.io/capture \\
             </div>
           </div>
           
-          <div className="border-t border-slate-800 mt-12 pt-8 text-center">
-            <p className="text-sm text-slate-400">
-              © {new Date().getFullYear()} NiceShotAPI. All rights reserved.
-            </p>
+          <div className="border-t border-slate-800 mt-12 pt-8">
+            <div className="flex flex-col md:flex-row items-center justify-between">
+              <p className="text-sm text-slate-400">
+                © {new Date().getFullYear()} NiceShotAPI. All rights reserved.
+              </p>
+              <div className="flex gap-4 mt-4 md:mt-0">
+                <Link href="https://twitter.com" className="text-slate-400 hover:text-indigo-400 transition-colors">
+                  <Twitter className="w-5 h-5" />
+                </Link>
+                <Link href="https://github.com" className="text-slate-400 hover:text-indigo-400 transition-colors">
+                  <Github className="w-5 h-5" />
+                </Link>
+                <Link href="https://linkedin.com" className="text-slate-400 hover:text-indigo-400 transition-colors">
+                  <Linkedin className="w-5 h-5" />
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </footer>

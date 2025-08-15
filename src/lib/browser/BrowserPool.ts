@@ -173,7 +173,7 @@ export class BrowserPool {
         '--disable-gpu',
         '--window-size=1920,1080'
       ],
-      headless: 'new',  // Use new headless mode
+      headless: true,  // Use headless mode
       timeout: 30000,
       defaultViewport: {
         width: 1920,

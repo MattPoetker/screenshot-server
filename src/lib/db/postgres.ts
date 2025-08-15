@@ -17,7 +17,9 @@ class PostgresManager {
       max: 20, // Maximum number of connections
       idleTimeoutMillis: 30000, // Close idle connections after 30s
       connectionTimeoutMillis: 2000, // Timeout after 2s if no connection available
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      ssl: process.env.DATABASE_URL?.includes('localhost') || process.env.DATABASE_URL?.includes('postgres:5432') 
+        ? false 
+        : process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
     })
 
     // Test the connection

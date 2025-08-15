@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         '--disable-gpu',
         '--window-size=1920,1080'
       ],
-      headless: 'new',
+      headless: true,
       timeout: 30000,
       defaultViewport: {
         width: 1920,
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     
     console.log('Screenshot taken successfully, size:', screenshot.length)
     
-    return new NextResponse(screenshot, {
+    return new NextResponse(Buffer.from(screenshot), {
       headers: {
         'Content-Type': 'image/png',
         'Content-Disposition': 'inline; filename="test.png"'

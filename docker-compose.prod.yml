@@ -1,0 +1,50 @@
+# Production-specific Docker Compose configuration
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  postgres:
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+      - "traefik.http.services.app.loadbalancer.healthcheck.path=/api/health"
+      - "traefik.http.services.app.loadbalancer.healthcheck.interval=10s"
+
+  nginx:
+    profiles:
+      - ""  # Enable in production

@@ -1,0 +1,133 @@
+# Blue-Green Deployment Configuration
+# This file sets up two identical environments (blue and green) for zero-downtime deployments
+
+version: '3.8'
+
+services:
+  # Blue Environment
+  app-blue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: screenshot_app_blue
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://screenshot_user:${POSTGRES_PASSWORD:-screenshot_password}@postgres:5432/screenshot_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - POSTMARK_SERVER_TOKEN=${POSTMARK_SERVER_TOKEN}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - APP_NAME=${APP_NAME:-NiceShot API}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-auto}
+      - R2_ENDPOINT=${R2_ENDPOINT}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - DEPLOYMENT_COLOR=blue
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./public/uploads:/app/public/uploads
+      - /var/www/screenshots:/app/public/screenshots
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - screenshot_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app-blue.rule=Host(`blue.${DOMAIN:-localhost}`)"
+      - "traefik.http.services.app-blue.loadbalancer.server.port=3000"
+
+  # Green Environment
+  app-green:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: screenshot_app_green
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://screenshot_user:${POSTGRES_PASSWORD:-screenshot_password}@postgres:5432/screenshot_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - POSTMARK_SERVER_TOKEN=${POSTMARK_SERVER_TOKEN}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - APP_NAME=${APP_NAME:-NiceShot API}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-auto}
+      - R2_ENDPOINT=${R2_ENDPOINT}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - DEPLOYMENT_COLOR=green
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./public/uploads:/app/public/uploads
+      - /var/www/screenshots:/app/public/screenshots
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - screenshot_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app-green.rule=Host(`green.${DOMAIN:-localhost}`)"
+      - "traefik.http.services.app-green.loadbalancer.server.port=3000"
+
+  # Load Balancer / Router
+  traefik:
+    image: traefik:v2.10
+    container_name: screenshot_traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/certs:/certs:ro
+    networks:
+      - screenshot_network
+    restart: unless-stopped
+
+networks:
+  screenshot_network:
+    external: true
