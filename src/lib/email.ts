@@ -1,8 +1,18 @@
-import postmark from 'postmark'
+import * as postmark from 'postmark'
 
-const client = new postmark.ServerClient(
-  process.env.POSTMARK_SERVER_TOKEN || ''
-)
+// Initialize client only when needed to avoid build-time issues
+let client: postmark.ServerClient | null = null
+
+function getClient() {
+  if (!client) {
+    const token = process.env.POSTMARK_SERVER_TOKEN
+    if (!token) {
+      throw new Error('POSTMARK_SERVER_TOKEN not configured')
+    }
+    client = new postmark.ServerClient(token)
+  }
+  return client
+}
 
 export interface EmailOptions {
   to: string | string[]
@@ -16,17 +26,14 @@ export async function sendEmail(options: EmailOptions) {
   try {
     console.log(`[${new Date().toISOString()}] Sending email to: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}`)
     
-    if (!process.env.POSTMARK_SERVER_TOKEN) {
-      throw new Error('POSTMARK_SERVER_TOKEN not configured')
-    }
-
+    const emailClient = getClient()
     const from = options.from || process.env.EMAIL_FROM || 'NiceShot <noreply@nice-shot.io>'
     
     // Handle multiple recipients
     const recipients = Array.isArray(options.to) ? options.to : [options.to]
     
     const emailPromises = recipients.map(recipient => 
-      client.sendEmail({
+      emailClient.sendEmail({
         From: from,
         To: recipient,
         Subject: options.subject,
